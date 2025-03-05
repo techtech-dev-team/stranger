@@ -22,8 +22,10 @@ exports.addEntry = async (req, res) => {
 
     res.status(201).json({ message: "Entry added successfully", entry });
   } catch (error) {
+    console.error("Server error:", error); // Log the full error
     res.status(500).json({ message: "Server error", error: error.message });
-  }
+}
+
 };
 
 
