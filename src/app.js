@@ -9,6 +9,8 @@ const staffRoutes = require('./routes/staffRoutes'); // Import staff routes
 const serviceRoutes = require('./routes/serviceRoutes'); // Import service routes
 const expenseRoutes = require('./routes/expenseRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const visionRoutes = require('./routes/visionRoutes'); // Import Vision routes
+
 
 
 
@@ -32,6 +34,8 @@ app.use('/api/staff', staffRoutes); // Register staff routes
 app.use('/api/service', serviceRoutes); // Register service routes
 app.use('/api/expense', expenseRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/vision', visionRoutes); // ✅ Register Vision routes
+
 
 
 
