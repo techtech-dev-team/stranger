@@ -6,7 +6,6 @@ exports.generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '1h' });
 };
 
-
 exports.register = async (req, res) => {
   try {
     const { loginId, pin, role } = req.body;
@@ -33,7 +32,6 @@ exports.register = async (req, res) => {
   }
 };
 
-
 exports.login = async (req, res) => {
   try {
     const { loginId, pin } = req.body;
@@ -46,23 +44,13 @@ exports.login = async (req, res) => {
 
     const token = generateToken(user._id);
 
-    // Role-based redirection URLs
-    const roleRedirects = {
-      "CM": "https://centre.example.com",
-      "ARM": "https://area.example.com",
-      "Vision": "https://vision.example.com",
-      "ID": "https://id.example.com",
-      "Admin": "https://admin.example.com"
-    };
-
+    // Return only token and role, frontend will handle navigation
     res.status(200).json({ 
       message: 'Login successful', 
       token, 
-      role: user.role, 
-      redirectUrl: roleRedirects[user.role] 
+      role: user.role
     });
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error });
   }
 };
-

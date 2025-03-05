@@ -13,7 +13,8 @@ const visionSchema = new mongoose.Schema({
     type: String, 
     required: true, 
     enum: ['Customer', 'Suspicious/Issue', 'Client Issue', 'Staff Crowd', 'No CCTV Vision'] 
-  } // Observational remark
+  }, // Observational remark
+  employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true } // Logged-in employee ID
 }, { timestamps: true });
 
 module.exports = mongoose.model('Vision', visionSchema);
