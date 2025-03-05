@@ -1,40 +1,19 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
 
-const protect = async (req, res, next) => {
-  let token = req.header('Authorization');
+const protect = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1]; // Extract token from "Bearer <token>"
 
   if (!token) {
-    return res.status(401).json({ message: 'Access denied, no token provided' });
+    return res.status(401).json({ message: 'Access denied. No token provided.' });
   }
 
   try {
-    // Ensure token starts with 'Bearer '
-    if (token.startsWith('Bearer ')) {
-      token = token.split(' ')[1]; // Extract only the token part
-    } else {
-      return res.status(401).json({ message: 'Invalid token format' });
-    }
-
-    // Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.userId).select('-pin');
-
+    req.user = decoded; // Store decoded user info in request
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Invalid token', error: error.message });
+    res.status(401).json({ message: 'Invalid token. Authentication failed.' });
   }
 };
 
-// ✅ Fix: Ensure this function is properly exported
-// const authorize = (...roles) => {
-//   return (req, res, next) => {
-//     if (!roles.includes(req.user.role)) {
-//       return res.status(403).json({ message: 'Access denied' });
-//     }
-//     next();
-//   };
-// };
-
-// ✅ Export both protect & authorize functions
-module.exports = { protect};
+module.exports = { protect };

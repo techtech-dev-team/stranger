@@ -10,6 +10,8 @@ const serviceRoutes = require('./routes/serviceRoutes'); // Import service route
 const expenseRoutes = require('./routes/expenseRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const visionRoutes = require('./routes/visionRoutes'); // Import Vision routes
+const { protect } = require('./middleware/authMiddleware'); // Import auth middleware
+
 
 
 
@@ -27,7 +29,8 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRoutes); // No auth required for login/register
+app.use(protect); // All routes below require authentication
 app.use('/api/admin', adminRoutes); // <-- Use admin routes
 app.use('/api/customer', customerRoutes); // Register customer routes
 app.use('/api/staff', staffRoutes); // Register staff routes
