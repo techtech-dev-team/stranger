@@ -5,7 +5,7 @@ const Staff = require('../models/Staff');
 // Add a new customer
 const addCustomer = async (req, res) => {
   try {
-    const { name, number, service, duration, inTime, paymentCash1, paymentOnline1, staffAttending, paymentCash2, paymentOnline2, cashCommission, onlineCommission, outTime } = req.body;
+    const { name, number, service, duration, inTime, paymentCash1, paymentOnline1, staffAttending, paymentCash2, paymentOnline2, cashCommission, onlineCommission, outTime, branchId, centreId, regionId } = req.body;
 
     // Check if service exists
     const serviceExists = await Service.findById(service);
@@ -30,7 +30,10 @@ const addCustomer = async (req, res) => {
       cashCommission,
       onlineCommission,
       outTime,
-      createdBy: req.user._id // Assigning Centre Manager who added this customer
+      createdBy: req.user._id, // Centre Manager who added this customer
+      branchId,
+      centreId,
+      regionId
     });
 
     await newCustomer.save();
@@ -46,7 +49,10 @@ const getCustomers = async (req, res) => {
   try {
     const customers = await Customer.find()
       .populate('service', 'name') // Populate service details
-      .populate('staffAttending', 'name'); // Populate staff details
+      .populate('staffAttending', 'name') // Populate staff details
+      .populate('branchId', 'name') // Populate branch details
+      .populate('centreId', 'name') // Populate centre details
+      .populate('regionId', 'name'); // Populate region details
 
     res.status(200).json(customers);
   } catch (error) {
