@@ -32,12 +32,20 @@ exports.addEntry = async (req, res) => {
 // ✅ Get all entries for logged-in user
 exports.getAllEntries = async (req, res) => {
   try {
-    const entries = await Vision.find({ employeeId: req.user.userId }).sort({ createdAt: -1 });
+    const entries = await Vision.find().sort({ createdAt: -1 });
+
+    if (!entries.length) {
+      return res.status(404).json({ message: "No entries found" });
+    }
+
     res.status(200).json(entries);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+
 
 // ✅ Get a single entry by ID (only if it belongs to the logged-in user)
 exports.getEntryById = async (req, res) => {
