@@ -44,7 +44,7 @@ const addCustomer = async (req, res) => {
 // Get all customers added by Centre Manager
 const getCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find({ createdBy: req.user._id })
+    const customers = await Customer.find()
       .populate('service', 'name') // Populate service details
       .populate('staffAttending', 'name'); // Populate staff details
 
@@ -53,5 +53,6 @@ const getCustomers = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 module.exports = { addCustomer, getCustomers };
