@@ -3,18 +3,31 @@ const mongoose = require('mongoose');
 const customerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   number: { type: String, required: true },
-  service: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true }, // Reference to service
+  service: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true },
   duration: { type: Number, enum: [45, 60, 120], required: true },
-  inTime: { type: String, required: true }, // Example: "13:00"
-  paymentCash1: { type: Number, default: 0 }, // First payment in cash
-  paymentOnline1: { type: Number, default: 0 }, // First payment online
-  staffAttending: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', required: true }, // Reference to staff
-  paymentCash2: { type: Number, default: 0 }, // Second payment in cash
-  paymentOnline2: { type: Number, default: 0 }, // Second payment online
-  cashCommission: { type: Number, default: 0 }, // Tip given in cash
-  onlineCommission: { type: Number, default: 0 }, // Tip given online
-  outTime: { type: String, required: true }, // Example: "14:30"
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true } // Centre Manager who added
+  inTime: { type: Date, required: true }, 
+  paymentCash1: { type: Number, default: 0 },
+  paymentOnline1: { type: Number, default: 0 },
+  staffAttending: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', required: true },
+  paymentCash2: { type: Number, default: 0 },
+  paymentOnline2: { type: Number, default: 0 },
+  cashCommission: { type: Number, default: 0 },
+  onlineCommission: { type: Number, default: 0 },
+  outTime: { type: Date, required: true }, 
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+
+  // New Fields
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true }, // Branch
+  centreId: { type: mongoose.Schema.Types.ObjectId, ref: 'Centre', required: true }, // Centre
+  regionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Region', required: true }, // Region
+
+  status: { 
+    type: String, 
+    enum: ['Pending', 'All ok', 'No camera', 'Offline', 'Other Issue'], 
+    default: 'Pending' 
+  },
+  remark: { type: String, default: '' },
+  verified: { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Customer', customerSchema);

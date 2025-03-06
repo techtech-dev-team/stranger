@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({
-  loginId: { type: String, required: true, unique: true, minlength: 6, maxlength: 6 }, // Auto-generated
+  loginId: { type: String, required: true, unique: true, minlength: 6, maxlength: 20 }, // Auto-generated
   pin: { type: String, required: true }, // Auto-generated 4-digit PIN
   role: { type: String, required: true, enum: ["CM", "ARM", "Vision", "ID", "Admin"] },
   branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", required: true },
