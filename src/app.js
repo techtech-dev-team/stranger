@@ -15,16 +15,13 @@ const visionIdRoutes = require('./routes/VisionIdRoutes');
 const matchRoutes = require('./routes/matchRoutes');
 
 require('dotenv').config();
-
 const app = express();
-
 // Connect to Database
 connectDB();
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-
 // Routes
 app.use('/api/auth', authRoutes); // No auth required for login/register
 app.use(protect); // All routes below require authentication
