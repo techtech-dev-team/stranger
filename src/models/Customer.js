@@ -14,20 +14,13 @@ const customerSchema = new mongoose.Schema({
   cashCommission: { type: Number, default: 0 },
   onlineCommission: { type: Number, default: 0 },
   outTime: { type: Date, required: true }, 
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-
-  // New Fields
-  branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true }, // Branch
-  centreId: { type: mongoose.Schema.Types.ObjectId, ref: 'Centre', required: true }, // Centre
-  regionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Region', required: true }, // Region
-
-  status: { 
-    type: String, 
-    enum: ['Pending', 'All ok', 'No camera', 'Offline', 'Other Issue'], 
-    default: 'Pending' 
-  },
-  remark: { type: String, default: '' },
-  verified: { type: Boolean, default: false }
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', required: true },
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+  centreId: { type: String, required: true },
+  regionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Region', required: true },
+  status: { type: String, default: "Pending" },
+  remark: { type: String },
+  verified: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Customer', customerSchema);
