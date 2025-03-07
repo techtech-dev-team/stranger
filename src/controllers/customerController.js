@@ -3,6 +3,7 @@ const Service = require('../models/Service');
 const Staff = require('../models/Staff');
 
 // Add a new customer
+
 const addCustomer = async (req, res) => {
   try {
     const { name, number, service, duration, inTime, paymentCash1, paymentOnline1, staffAttending, paymentCash2, paymentOnline2, cashCommission, onlineCommission, outTime, branchId, centreId, regionId } = req.body;
@@ -15,13 +16,19 @@ const addCustomer = async (req, res) => {
     const staffExists = await Staff.findById(staffAttending);
     if (!staffExists) return res.status(400).json({ message: 'Invalid staff ID' });
 
-    // Create new customer entry
+    // Convert inTime and outTime to IST
+    const convertToIST = (utcTime) => {
+      if (!utcTime) return null;
+      const date = new Date(utcTime);
+      return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    };
+
     const newCustomer = new Customer({
       name,
       number,
       service,
       duration,
-      inTime,
+      inTime: convertToIST(inTime),
       paymentCash1,
       paymentOnline1,
       staffAttending,
@@ -29,7 +36,7 @@ const addCustomer = async (req, res) => {
       paymentOnline2,
       cashCommission,
       onlineCommission,
-      outTime,
+      outTime: convertToIST(outTime),
       createdBy: req.user._id, // Centre Manager who added this customer
       branchId,
       centreId,
@@ -51,7 +58,7 @@ const getCustomers = async (req, res) => {
       .populate('service', 'name') // Populate service name
       .populate('staffAttending', 'name') // Populate staff name
       .populate('branchId')
-      .populate('centreId') 
+      .populate('centreId')
       .populate('regionId', 'region_id name') // Populate region details
       .exec(); // Execute query
 

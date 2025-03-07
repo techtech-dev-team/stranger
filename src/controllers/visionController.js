@@ -1,32 +1,30 @@
 const Vision = require('../models/Vision');
 
 // ✅ Add a new entry with employee ID from token
+const moment = require('moment-timezone'); // Install: npm install moment-timezone
+
 exports.addEntry = async (req, res) => {
   try {
     const { time, nameOrCode, numberOfPeople, status, remark, staffId } = req.body;
 
     // Extract employeeId from logged-in user
     const employeeId = req.user._id;
+    if (!employeeId) return res.status(401).json({ message: "Unauthorized: Employee ID missing" });
 
-    if (!employeeId) {
-      return res.status(401).json({ message: "Unauthorized: Employee ID missing" });
-    }
-
-    if (numberOfPeople < 1) {
-      return res.status(400).json({ message: "Number of people must be at least 1" });
-    }
+    if (numberOfPeople < 1) return res.status(400).json({ message: "Number of people must be at least 1" });
 
     // Get today's date
-    const currentDate = new Date();
+    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-    // Extract current date in YYYY-MM-DD format
-    const datePart = currentDate.toISOString().split('T')[0];
+    // Ensure the provided time is in HH:mm:ss format
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
+    if (!timeRegex.test(time)) return res.status(400).json({ message: "Invalid time format. Expected HH:mm:ss" });
 
-    // Combine today's date with manually provided time, ensuring correct format
-    const formattedTime = new Date(`${datePart}T${time}:00.000Z`).toISOString();
+    // Combine date and time, convert to IST (GMT+5:30)
+    const formattedTime = moment.tz(`${currentDate}T${time}`, 'Asia/Kolkata').toISOString();
 
     const entry = new Vision({
-      time: formattedTime,  // Ensuring ISO format
+      time: formattedTime,
       nameOrCode,
       numberOfPeople,
       status,
