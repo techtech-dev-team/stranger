@@ -48,17 +48,19 @@ const addCustomer = async (req, res) => {
 const getCustomers = async (req, res) => {
   try {
     const customers = await Customer.find()
-      .populate('service', 'name') // Populate service details
-      .populate('staffAttending', 'name') // Populate staff details
-      .populate('branchId', 'name') // Populate branch details
-      .populate('centreId', 'name') // Populate centre details
-      .populate('regionId', 'name'); // Populate region details
+      .populate('service', 'name') // Populate service name
+      .populate('staffAttending', 'name') // Populate staff name
+      .populate('branchId')
+      .populate('centreId') 
+      .populate('regionId', 'region_id name') // Populate region details
+      .exec(); // Execute query
 
     res.status(200).json(customers);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 
 module.exports = { addCustomer, getCustomers };
