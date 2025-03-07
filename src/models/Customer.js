@@ -18,7 +18,7 @@ const customerSchema = new mongoose.Schema({
   branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
   centreId: { type: mongoose.Schema.Types.ObjectId, ref: 'Centre', required: true },
   regionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Region', required: true },
-  status: { type: String, default: "Pending" },
+  status: { type: String, default: "null" },
   remark: { type: String },
   verified: { type: Boolean, default: false },
 }, { timestamps: true });
