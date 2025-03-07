@@ -5,7 +5,6 @@ exports.addEntry = async (req, res) => {
   try {
     const { time, nameOrCode, numberOfPeople, status, remark, staffId } = req.body;
 
-    // Extract employeeId from logged-in user
     const employeeId = req.user._id;
 
     if (!employeeId) {
@@ -26,7 +25,7 @@ exports.addEntry = async (req, res) => {
       numberOfPeople,
       status,
       remark,
-      staffId,
+      staffId: employeeId,
     });
 
     await entry.save();
