@@ -7,7 +7,6 @@ exports.addEntry = async (req, res) => {
   try {
     const { time, nameOrCode, numberOfPeople, status, remark, staffId } = req.body;
 
-    // Extract employeeId from logged-in user
     const employeeId = req.user._id;
     if (!employeeId) return res.status(401).json({ message: "Unauthorized: Employee ID missing" });
 
@@ -29,7 +28,7 @@ exports.addEntry = async (req, res) => {
       numberOfPeople,
       status,
       remark,
-      staffId,
+      staffId: employeeId,
     });
 
     await entry.save();
