@@ -12,6 +12,12 @@ const reportRoutes = require('./routes/reportRoutes');
 const visionRoutes = require('./routes/visionRoutes'); // Import Vision routes
 const { protect } = require('./middleware/authMiddleware'); // Import auth middleware
 const visionIdRoutes = require('./routes/VisionIdRoutes');
+const regionRoutes = require("./routes/regionRoutes");
+const branchRoutes = require("./routes/branchRoutes");
+const centreRoutes = require("./routes/centreRoutes");
+
+
+
 
 require('dotenv').config();
 const app = express();
@@ -32,6 +38,11 @@ app.use('/api/expense', expenseRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/vision', visionRoutes); // ✅ Register Vision routes
 app.use('/api/visionid', visionIdRoutes);
+app.use("/api/regions", regionRoutes);
+app.use("/api/branches", branchRoutes);
+app.use("/api/centres", centreRoutes);
+
+
 
 
 module.exports = app;
