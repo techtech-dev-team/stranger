@@ -16,12 +16,17 @@ exports.addEntry = async (req, res) => {
       return res.status(400).json({ message: "Number of people must be at least 1" });
     }
 
-    // Set today's date and replace time manually provided
-    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const formattedTime = `${currentDate}T${time}:00.000+00:00`;
+    // Get today's date
+    const currentDate = new Date();
+
+    // Extract current date in YYYY-MM-DD format
+    const datePart = currentDate.toISOString().split('T')[0];
+
+    // Combine today's date with manually provided time, ensuring correct format
+    const formattedTime = new Date(`${datePart}T${time}:00.000Z`).toISOString();
 
     const entry = new Vision({
-      time: formattedTime,
+      time: formattedTime,  // Ensuring ISO format
       nameOrCode,
       numberOfPeople,
       status,
@@ -36,6 +41,7 @@ exports.addEntry = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 // ✅ Get all entries
 exports.getAllEntries = async (req, res) => {
