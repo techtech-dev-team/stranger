@@ -32,11 +32,11 @@ app.use('/api/auth', authRoutes); // No auth required for login/register
 app.use(protect); // All routes below require authentication
 app.use('/api/admin', adminRoutes); // <-- Use admin routes
 app.use('/api/customer', customerRoutes); // Register customer routes
-app.use('/api/staff', staffRoutes); // Register staff routes
-app.use('/api/service', serviceRoutes); // Register service routes
+app.use('/api/staff', staffRoutes); 
+app.use('/api/service', serviceRoutes); 
 app.use('/api/expense', expenseRoutes);
 app.use('/api/reports', reportRoutes);
-app.use('/api/vision', visionRoutes); // ✅ Register Vision routes
+app.use('/api/vision', visionRoutes); 
 app.use('/api/visionid', visionIdRoutes);
 app.use("/api/regions", regionRoutes);
 app.use("/api/branches", branchRoutes);

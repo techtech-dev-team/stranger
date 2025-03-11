@@ -55,12 +55,12 @@ const addCustomer = async (req, res) => {
 const getCustomers = async (req, res) => {
   try {
     const customers = await Customer.find()
-      .populate('service', 'name') // Populate service name
-      .populate('staffAttending', 'name') // Populate staff name
+      .populate('service') 
+      .populate('staffAttending')
       .populate('branchId')
       .populate('centreId')
-      .populate('regionId', 'region_id name') // Populate region details
-      .exec(); // Execute query
+      .populate('regionId')
+      .exec();
 
     res.status(200).json(customers);
   } catch (error) {
