@@ -55,26 +55,18 @@ exports.login = async (req, res) => {
     try {
         const { loginId, pin } = req.body;
 
-        // Find user by loginId
-        const user = await User.findOne({ loginId });
-        if (!user) return res.status(400).json({ message: "Invalid credentials" });
+        const user = await User.findOne({ loginId }); // Do not exclude PIN here
 
-        // Compare pin directly (not using bcrypt)
-        if (user.pin !== pin) return res.status(400).json({ message: "Invalid credentials" });
+      
 
-        // Prepare user payload for JWT
-        const userPayload = {
-            _id: user._id,
-            loginId: user.loginId,
-            role: user.role,
-            name: user.name,
-            mobileNumber: user.mobileNumber,
-            email: user.email,
-            status: user.status,
-            branchId: user.branchId,
-            centreId: user.centreId,
-            regionId: user.regionId
-        };
+        if (!user) {
+            return res.status(401).json({ message: "User not found" });
+        }
+
+
+        if (user.pin !== pin) {
+            return res.status(401).json({ message: "Invalid PIN" });
+        }
 
         // Generate JWT Token
         const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
