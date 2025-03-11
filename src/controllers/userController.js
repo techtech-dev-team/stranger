@@ -55,27 +55,26 @@ exports.login = async (req, res) => {
     try {
         const { loginId, pin } = req.body;
 
-        const user = await User.findOne({ loginId }); // Do not exclude PIN here
-
-      
+        const user = await User.findOne({ loginId });
 
         if (!user) {
             return res.status(401).json({ message: "User not found" });
         }
 
-
         if (user.pin !== pin) {
             return res.status(401).json({ message: "Invalid PIN" });
         }
 
-        // Generate JWT Token
+        // ✅ Include all user details in userPayload
+        const userPayload = { ...user._doc }; // `_doc` contains all user fields
+
+        // ✅ Generate JWT Token
         const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
         res.status(200).json({
             message: "Login successful",
             token,
-            role: user.role,
-            user: userPayload
+            user: userPayload // Send full user details
         });
     } catch (error) {
         res.status(500).json({ message: "Server Error", error: error.message });
