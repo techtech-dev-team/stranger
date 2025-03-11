@@ -50,31 +50,46 @@ exports.registerUser = async (req, res) => {
 };
 
 // ✅ Login User
-exports.loginUser = async (req, res) => {
+// ✅ Login User
+exports.login = async (req, res) => {
     try {
         const { loginId, pin } = req.body;
 
-        const user = await User.findOne({ loginId }); // Do not exclude PIN here
+        // Find user by loginId
+        const user = await User.findOne({ loginId });
+        if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-      
+        // Compare pin directly (not using bcrypt)
+        if (user.pin !== pin) return res.status(400).json({ message: "Invalid credentials" });
 
-        if (!user) {
-            return res.status(401).json({ message: "User not found" });
-        }
-
-
-        if (user.pin !== pin) {
-            return res.status(401).json({ message: "Invalid PIN" });
-        }
+        // Prepare user payload for JWT
+        const userPayload = {
+            _id: user._id,
+            loginId: user.loginId,
+            role: user.role,
+            name: user.name,
+            mobileNumber: user.mobileNumber,
+            email: user.email,
+            status: user.status,
+            branchId: user.branchId,
+            centreId: user.centreId,
+            regionId: user.regionId
+        };
 
         // Generate JWT Token
-        const token = jwt.sign({ user }, process.env.JWT_SECRET, { expiresIn: "1d" });
+        const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-        res.json({ message: "Login successful", token, role:user.role });
+        res.status(200).json({
+            message: "Login successful",
+            token,
+            role: user.role,
+            user: userPayload
+        });
     } catch (error) {
-        res.status(500).json({ message: "Error logging in", error: error.message });
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 };
+
 
 
 
