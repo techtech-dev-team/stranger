@@ -54,19 +54,28 @@ exports.loginUser = async (req, res) => {
     try {
         const { loginId, pin } = req.body;
 
-        const user = await User.findOne({ loginId });
-        if (!user || user.pin !== pin) {
-            return res.status(401).json({ message: "Invalid credentials" });
+        const user = await User.findOne({ loginId }); // Do not exclude PIN here
+
+      
+
+        if (!user) {
+            return res.status(401).json({ message: "User not found" });
+        }
+
+
+        if (user.pin !== pin) {
+            return res.status(401).json({ message: "Invalid PIN" });
         }
 
         // Generate JWT Token
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
+        const token = jwt.sign({ user }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-        res.json({ message: "Login successful", token, user });
+        res.json({ message: "Login successful", token });
     } catch (error) {
         res.status(500).json({ message: "Error logging in", error: error.message });
     }
 };
+
 
 
 // ✅ Get All Users
@@ -110,5 +119,48 @@ exports.deleteUser = async (req, res) => {
         res.json({ message: "User deleted successfully" });
     } catch (error) {
         res.status(500).json({ message: "Error deleting user", error: error.message });
+    }
+};
+
+exports.markAbsent = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await User.findById(id);
+
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        if (user.attendance.absent >= user.attendance.totalWorkingDays) {
+            return res.status(400).json({ message: "Cannot mark absent. All working days already used." });
+        }
+
+        user.attendance.absent += 1;
+        user.attendance.present = user.attendance.totalWorkingDays - user.attendance.absent;
+
+        await user.save();
+
+        res.json({ message: "User marked absent", attendance: user.attendance });
+    } catch (error) {
+        res.status(500).json({ message: "Error marking user absent", error: error.message });
+    }
+};
+
+
+exports.getAttendanceReport = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await User.findById(id).select("name role attendance");
+
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        res.json({
+            message: "Attendance report retrieved",
+            user: {
+                name: user.name,
+                role: user.role,
+                attendance: user.attendance
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Error retrieving attendance report", error: error.message });
     }
 };
