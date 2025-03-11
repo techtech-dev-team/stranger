@@ -8,6 +8,4 @@ router.post("/cash-collection", addCashCollection);
 // Route to get cash collection entries for a specific centre
 router.get("/cash-collection/:centreId", getCashCollections);
 
-router.get("/cash-collection/summary/:centreId", getCashSummary);
-
 module.exports = router;
