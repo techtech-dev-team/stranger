@@ -55,9 +55,7 @@ exports.loginUser = async (req, res) => {
         const { loginId, pin } = req.body;
 
         const user = await User.findOne({ loginId }); // Do not exclude PIN here
-
       
-
         if (!user) {
             return res.status(401).json({ message: "User not found" });
         }
