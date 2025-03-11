@@ -1,55 +1,53 @@
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const connectDB = require('./config/db');
-const authRoutes = require('./routes/authRoutes');
-const adminRoutes = require('./routes/adminRoutes'); // <-- Import admin routes
-const customerRoutes = require('./routes/customerRoutes'); // Import customer routes
-const staffRoutes = require('./routes/staffRoutes'); // Import staff routes
-const serviceRoutes = require('./routes/serviceRoutes'); // Import service routes
-const expenseRoutes = require('./routes/expenseRoutes');
-const reportRoutes = require('./routes/reportRoutes');
-const visionRoutes = require('./routes/visionRoutes'); // Import Vision routes
-const { protect } = require('./middleware/authMiddleware'); // Import auth middleware
-const visionIdRoutes = require('./routes/VisionIdRoutes');
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const dotenv = require("dotenv");
+const connectDB = require("./config/db");
+
+// Import Routes
+const adminRoutes = require("./routes/adminRoutes");
+const customerRoutes = require("./routes/customerRoutes");
+const serviceRoutes = require("./routes/serviceRoutes");
+const expenseRoutes = require("./routes/expenseRoutes");
+const reportRoutes = require("./routes/reportRoutes");
+const visionRoutes = require("./routes/visionRoutes");
+const visionIdRoutes = require("./routes/VisionIdRoutes");
 const regionRoutes = require("./routes/regionRoutes");
 const branchRoutes = require("./routes/branchRoutes");
 const centreRoutes = require("./routes/centreRoutes");
-
 const cashCollectionRoutes = require("./routes/cashCollectionRoutes");
-
 const gameRoutes = require("./routes/gameRoutes");
+const userRoutes = require("./routes/userRoutes"); // ✅ Added user routes
 
-require('dotenv').config();
+const { protect } = require("./middleware/authMiddleware"); // Import auth middleware
+
+dotenv.config();
 const app = express();
+
 // Connect to Database
 connectDB();
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
-app.use((req, res, next) => {
-    if (req.path.startsWith('/game')) {
-      return next();
-    }
-    authMiddleware(req, res, next);
-  });
+app.use(express.json()); // Middleware to parse JSON data
+app.use(express.urlencoded({ extended: true })); // Parse URL-encoded data
+
+// Routes (No Auth Required)
+app.use("/api/users", userRoutes); // ✅ Added user routes
 app.use("/game", gameRoutes);
-// Routes
-app.use('/api/auth', authRoutes); // No auth required for login/register
-app.use(protect); // All routes below require authentication
-app.use('/api/admin', adminRoutes); // <-- Use admin routes
-app.use('/api/customer', customerRoutes); // Register customer routes
-app.use('/api/staff', staffRoutes); 
-app.use('/api/service', serviceRoutes); 
-app.use('/api/expense', expenseRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/vision', visionRoutes); 
-app.use('/api/visionid', visionIdRoutes);
+
+// Routes (Protected)
+app.use(protect);
+app.use("/api/admin", adminRoutes);
+app.use("/api/customer", customerRoutes);
+app.use("/api/service", serviceRoutes);
+app.use("/api/expense", expenseRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/vision", visionRoutes);
+app.use("/api/visionid", visionIdRoutes);
 app.use("/api/regions", regionRoutes);
 app.use("/api/branches", branchRoutes);
 app.use("/api/centres", centreRoutes);
-app.use("/api", cashCollectionRoutes);
-
+app.use("/api/cash-collection", cashCollectionRoutes);
 
 module.exports = app;

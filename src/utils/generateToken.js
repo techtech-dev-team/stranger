@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const User = require("../models/User");
-const Branch = require("../models/Branch"); // Import models
+const Branch = require("../models/Branch");
 const Centre = require("../models/Centre");
 const Region = require("../models/Region");
 
@@ -11,7 +11,6 @@ const generateToken = async (userId) => {
       throw new Error("Invalid user ID");
     }
 
-    // Fetch user details with populated data
     const user = await User.findById(userId)
       .populate("branchId", "name")
       .populate("centreId", "name")
@@ -23,10 +22,10 @@ const generateToken = async (userId) => {
       throw new Error("User not found");
     }
 
-    // Generate JWT token
+    // Fix: Change `userId` to `id` in payload
     return jwt.sign(
       {
-        userId: user._id,
+        id: user._id, // Fix: Use `id` instead of `userId`
         loginId: user.loginId,
         role: user.role,
         name: user.name,

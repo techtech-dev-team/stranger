@@ -1,0 +1,114 @@
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
+// Function to generate a random 4-digit number
+const generateRandom4Digit = () => Math.floor(1000 + Math.random() * 9000);
+
+// Function to generate loginId
+const generateLoginId = (role) => {
+    const rolePrefix = role.slice(0, 2).toUpperCase(); // Take first two letters (CM, AR, VI, etc.)
+    return `${rolePrefix}${generateRandom4Digit()}`;
+};
+
+// ✅ Register New User
+exports.registerUser = async (req, res) => {
+    try {
+        const { name, mobileNumber, email, role, branchId, centreId, regionId, status } = req.body;
+
+        // Check if user with the same mobile number or email already exists
+        const existingUser = await User.findOne({ $or: [{ mobileNumber }, { email }] });
+        if (existingUser) return res.status(400).json({ message: "User already exists" });
+
+        let loginId = null;
+        let pin = null;
+
+        // Only generate loginId & PIN for specific roles
+        if (["CM", "ARM", "Vision", "ID", "Admin"].includes(role)) {
+            loginId = generateLoginId(role);
+            pin = generateRandom4Digit().toString();
+        }
+
+        const newUser = new User({ 
+            name, 
+            mobileNumber, 
+            email, 
+            role, 
+            branchId, 
+            centreId, 
+            regionId, 
+            status, 
+            loginId, 
+            pin
+        });
+
+        await newUser.save();
+        res.status(201).json({ message: "User registered successfully", user: newUser });
+    } catch (error) {
+        res.status(500).json({ message: "Error registering user", error: error.message });
+    }
+};
+
+// ✅ Login User
+exports.loginUser = async (req, res) => {
+    try {
+        const { loginId, pin } = req.body;
+
+        const user = await User.findOne({ loginId });
+        if (!user || user.pin !== pin) {
+            return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        // Generate JWT Token
+        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+        res.json({ message: "Login successful", token, user });
+    } catch (error) {
+        res.status(500).json({ message: "Error logging in", error: error.message });
+    }
+};
+
+
+// ✅ Get All Users
+exports.getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find().populate("branchId centreId regionId");
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: "Error retrieving users", error: error.message });
+    }
+};
+
+// ✅ Get Single User by ID
+exports.getUserById = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).populate("branchId centreId regionId");
+        if (!user) return res.status(404).json({ message: "User not found" });
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ message: "Error retrieving user", error: error.message });
+    }
+};
+
+
+// ✅ Update User
+exports.updateUser = async (req, res) => {
+    try {
+        const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+        if (!updatedUser) return res.status(404).json({ message: "User not found" });
+        res.json(updatedUser);
+    } catch (error) {
+        res.status(500).json({ message: "Error updating user", error: error.message });
+    }
+};
+
+// ✅ Delete User
+exports.deleteUser = async (req, res) => {
+    try {
+        const deletedUser = await User.findByIdAndDelete(req.params.id);
+        if (!deletedUser) return res.status(404).json({ message: "User not found" });
+        res.json({ message: "User deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: "Error deleting user", error: error.message });
+    }
+};

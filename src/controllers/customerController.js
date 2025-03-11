@@ -1,6 +1,6 @@
 const Customer = require('../models/Customer');
 const Service = require('../models/Service');
-const Staff = require('../models/Staff');
+const Staff = require('../models/User');
 
 // Add a new customer
 
@@ -13,8 +13,8 @@ const addCustomer = async (req, res) => {
     if (!serviceExists) return res.status(400).json({ message: 'Invalid service ID' });
 
     // Check if staff exists
-    const staffExists = await Staff.findById(staffAttending);
-    if (!staffExists) return res.status(400).json({ message: 'Invalid staff ID' });
+    const userExists = await User.findById(userAttending);
+    if (!userExists) return res.status(400).json({ message: 'Invalid user ID' });
 
     // Convert inTime and outTime to IST
     const convertToIST = (utcTime) => {
