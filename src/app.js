@@ -15,9 +15,10 @@ const visionIdRoutes = require('./routes/VisionIdRoutes');
 const regionRoutes = require("./routes/regionRoutes");
 const branchRoutes = require("./routes/branchRoutes");
 const centreRoutes = require("./routes/centreRoutes");
+
 const cashCollectionRoutes = require("./routes/cashCollectionRoutes");
 
-
+const gameRoutes = require("./routes/gameRoutes");
 
 require('dotenv').config();
 const app = express();
@@ -27,6 +28,13 @@ connectDB();
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+app.use((req, res, next) => {
+    if (req.path.startsWith('/game')) {
+      return next();
+    }
+    authMiddleware(req, res, next);
+  });
+app.use("/game", gameRoutes);
 // Routes
 app.use('/api/auth', authRoutes); // No auth required for login/register
 app.use(protect); // All routes below require authentication
