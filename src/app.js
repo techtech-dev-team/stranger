@@ -15,7 +15,7 @@ const visionIdRoutes = require('./routes/VisionIdRoutes');
 const regionRoutes = require("./routes/regionRoutes");
 const branchRoutes = require("./routes/branchRoutes");
 const centreRoutes = require("./routes/centreRoutes");
-
+const cashCollectionRoutes = require("./routes/cashCollectionRoutes");
 
 
 
@@ -41,8 +41,7 @@ app.use('/api/visionid', visionIdRoutes);
 app.use("/api/regions", regionRoutes);
 app.use("/api/branches", branchRoutes);
 app.use("/api/centres", centreRoutes);
-
-
+app.use("/api", cashCollectionRoutes);
 
 
 module.exports = app;
