@@ -9,7 +9,9 @@ const centreSchema = new mongoose.Schema({
     type: String, 
     required: true, 
     enum: ["plus", "minus"] // Payment criteria validation
-  }
+  },
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", required: true }, // Reference to Branch
+  regionId: { type: mongoose.Schema.Types.ObjectId, ref: "Region", required: true }  // Reference to Region
 });
 
 module.exports = mongoose.model("Centre", centreSchema);

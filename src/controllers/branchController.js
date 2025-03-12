@@ -5,7 +5,7 @@ const Branch = require("../models/Branch");
 // @access Public
 exports.getAllBranches = async (req, res) => {
   try {
-    const branches = await Branch.find({});
+    const branches = await Branch.find({}).populate("regionId", "name"); // Populating regionId with region name
     if (!branches.length) {
       return res.status(404).json({ message: "No branches found" });
     }
@@ -16,12 +16,13 @@ exports.getAllBranches = async (req, res) => {
   }
 };
 
+
 // @desc   Get a single branch by ID
 // @route  GET /api/branches/:id
 // @access Public
 exports.getBranchById = async (req, res) => {
   try {
-    const branch = await Branch.findById(req.params.id);
+    const branch = await Branch.findById(req.params.id).populate("regionId", "name");
     if (!branch) {
       return res.status(404).json({ message: "Branch not found" });
     }
@@ -31,3 +32,4 @@ exports.getBranchById = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
