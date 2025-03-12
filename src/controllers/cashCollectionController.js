@@ -5,10 +5,18 @@ exports.addCashCollection = async (req, res) => {
   try {
     const { centreId, regionId, branchId, amountReceived, fromDate, toDate, amountReceivingDate, remark } = req.body;
 
+    // Check required fields
     if (!centreId || !regionId || !branchId || !amountReceived || !fromDate || !toDate || !amountReceivingDate) {
       return res.status(400).json({ message: "All required fields must be provided." });
     }
 
+    // Extract userId from the token (added automatically by authMiddleware)
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated." });
+    }
+
+    // Create new entry
     const newEntry = new CashCollection({
       centreId,
       regionId,
@@ -17,7 +25,8 @@ exports.addCashCollection = async (req, res) => {
       fromDate,
       toDate,
       amountReceivingDate,
-      remark
+      remark,
+      userId,  // Automatically added
     });
 
     await newEntry.save();
@@ -26,6 +35,7 @@ exports.addCashCollection = async (req, res) => {
     res.status(500).json({ message: "Error adding cash collection.", error: error.message });
   }
 };
+
 
 // Get cash collection records for a specific centre
 exports.getCashCollections = async (req, res) => {

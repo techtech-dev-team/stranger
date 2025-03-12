@@ -2,14 +2,15 @@ const mongoose = require("mongoose");
 
 const cashCollectionSchema = new mongoose.Schema({
   centreId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre", required: true },
-  regionId: { type: mongoose.Schema.Types.ObjectId, ref: "Region", required: true }, // Added regionId
-  branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", required: true }, // Added branchId
-  amountReceived: { type: Number, required: true }, // Amount collected
-  fromDate: { type: Date, required: true }, // Collection period start date
-  toDate: { type: Date, required: true }, // Collection period end date
-  amountReceivingDate: { type: Date, required: true }, // When amount was received
-  remark: { type: String, default: "" }, // Additional remarks
-  createdAt: { type: Date, default: Date.now }, // Timestamp of entry
+  regionId: { type: mongoose.Schema.Types.ObjectId, ref: "Region", required: true },
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", required: true },
+  amountReceived: { type: Number, required: true },
+  fromDate: { type: Date, required: true },
+  toDate: { type: Date, required: true },
+  amountReceivingDate: { type: Date, required: true },
+  remark: { type: String, default: "" },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },  // Added userId field
+  createdAt: { type: Date, default: Date.now },
 });
 
 module.exports = mongoose.model("CashCollection", cashCollectionSchema);
