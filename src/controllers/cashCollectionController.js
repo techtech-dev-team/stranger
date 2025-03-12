@@ -56,6 +56,7 @@ exports.getCashCollections = async (req, res) => {
 };
 
 // Get cash collection summary for a specific region and branch
+// Get cash collection history for a specific region and branch
 exports.getCashCollectionHistory = async (req, res) => {
   try {
     const { regionId, branchId } = req.query;
@@ -64,16 +65,16 @@ exports.getCashCollectionHistory = async (req, res) => {
     if (regionId) filter.regionId = regionId;
     if (branchId) filter.branchId = branchId;
 
-    const history = await CashCollection.find(filter).select(
-      "amountReceived fromDate toDate amountReceivingDate"
-    );
+    // Fetch history with user populated
+    const history = await CashCollection.find(filter)
+      .select("amountReceived fromDate toDate amountReceivingDate userId")
+      .populate("userId", "name"); // Populate user's name and loginId
 
     const formattedHistory = history.map((item) => ({
       amount: item.amountReceived,
-      duration: `${new Date(item.fromDate).toLocaleDateString()} - ${new Date(
-        item.toDate
-      ).toLocaleDateString()}`,
+      duration: `${new Date(item.fromDate).toLocaleDateString()} - ${new Date(item.toDate).toLocaleDateString()}`,
       collectionDate: new Date(item.amountReceivingDate).toLocaleDateString(),
+      postedBy: item.userId ? `${item.userId.name}` : "Unknown", // Show user info
     }));
 
     res.status(200).json({
