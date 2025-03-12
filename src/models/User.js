@@ -2,8 +2,8 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
-    loginId: { type: String, unique: true, sparse: true }, // Only generated for specific roles
-    pin: { type: String, sparse: true }, // Generated only if applicable
+    loginId: { type: String, unique: true, sparse: true },
+    pin: { type: String, sparse: true },
     role: { type: String, required: true, enum: ["CM", "ARM", "Vision", "ID", "Admin", "ClubStaff", "Manager"] },
     branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
     centreId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
@@ -12,13 +12,17 @@ const userSchema = new mongoose.Schema(
     mobileNumber: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     status: { type: String, required: true, enum: ["Active", "Inactive"], default: "Active" },
-
-    // Staff-specific fields
     aadharOrPanNumber: { type: String, unique: true, sparse: true },
-    attendance: {
-      present: { type: Number, default: 0 },
-      absent: { type: Number, default: 0 },
-      totalWorkingDays: { type: Number, default: 26 },
+
+    // Month-wise Attendance
+    monthlyAttendance: {
+      type: Map,
+      of: {
+        present: { type: Number, default: 0 },
+        absent: { type: Number, default: 0 },
+        totalWorkingDays: { type: Number, default: 26 },
+      },
+      default: {},
     },
   },
   { timestamps: true }
