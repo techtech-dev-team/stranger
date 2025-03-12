@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getCashCollections, addCashCollection, getCashSummary } = require("../controllers/cashCollectionController");
+const { getCashCollections, addCashCollection, getCashCollectionHistory } = require("../controllers/cashCollectionController");
 
 // Route to add cash collection entry
 router.post("/cash-collection", addCashCollection);
@@ -9,6 +9,6 @@ router.post("/cash-collection", addCashCollection);
 router.get("/cash-collection/:centreId", getCashCollections);
 
 // Route to get cash collection summary for a region or branch
-router.get("/cash-collection-summary", getCashSummary);
+router.get("/cash-collection-summary", getCashCollectionHistory);
 
 module.exports = router;

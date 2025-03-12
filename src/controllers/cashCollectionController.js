@@ -46,7 +46,7 @@ exports.getCashCollections = async (req, res) => {
 };
 
 // Get cash collection summary for a specific region and branch
-exports.getCashSummary = async (req, res) => {
+exports.getCashCollectionHistory = async (req, res) => {
   try {
     const { regionId, branchId } = req.query;
 
@@ -54,22 +54,27 @@ exports.getCashSummary = async (req, res) => {
     if (regionId) filter.regionId = regionId;
     if (branchId) filter.branchId = branchId;
 
-    const summary = await CashCollection.aggregate([
-      { $match: filter },
-      {
-        $group: {
-          _id: null,
-          totalAmount: { $sum: "$amountReceived" },
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+    const history = await CashCollection.find(filter).select(
+      "amountReceived fromDate toDate amountReceivingDate"
+    );
+
+    const formattedHistory = history.map((item) => ({
+      amount: item.amountReceived,
+      duration: `${new Date(item.fromDate).toLocaleDateString()} - ${new Date(
+        item.toDate
+      ).toLocaleDateString()}`,
+      collectionDate: new Date(item.amountReceivingDate).toLocaleDateString(),
+    }));
 
     res.status(200).json({
-      message: "Cash collection summary retrieved successfully.",
-      data: summary.length > 0 ? summary[0] : { totalAmount: 0, count: 0 },
+      message: "Cash collection history retrieved successfully.",
+      data: formattedHistory,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error retrieving cash collection summary.", error: error.message });
+    res.status(500).json({
+      message: "Error retrieving cash collection history.",
+      error: error.message,
+    });
   }
 };
+

@@ -115,8 +115,6 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
-// ✅ Get Single User by ID
-// ✅ Get Single User by ID (Fixed)
 exports.getUserById = async (req, res) => {
   try {
       const user = await User.findById(req.params.id)
