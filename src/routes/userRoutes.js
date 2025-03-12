@@ -4,7 +4,7 @@ const { getAllUsers, getUserById, createUser, updateUser, deleteUser , registerU
 
 // Routes
 router.get("/", getAllUsers); // Get all users (Protected)
-router.get("/getUser", getUserById); // Get single user by ID (Protected)
+router.get("/:id", getUserById); // Get single user by ID (Protected)
 router.put("/:id", updateUser); // Update user (Admin only)
 router.delete("/:id", deleteUser); // Delete user (Admin only)
 router.post("/register", registerUser); // Register new user

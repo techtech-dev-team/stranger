@@ -119,25 +119,17 @@ exports.getAllUsers = async (req, res) => {
 // ✅ Get Single User by ID (Fixed)
 exports.getUserById = async (req, res) => {
   try {
-    const userId = req.body.user_id || req.user._id;  // Extract user_id from body or req.user (if using auth middleware)
-    
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
+      const user = await User.findById(req.params.id)
+          .populate("branchIds")
+          .populate("centreIds")
+          .populate("regionIds");
 
-    const user = await User.findById(userId)
-      .populate("branchIds")
-      .populate("centreIds")
-      .populate("regionIds");
-
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    res.json(user);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json(user);
   } catch (error) {
-    res.status(500).json({ message: "Error retrieving user", error: error.message });
+      res.status(500).json({ message: "Error retrieving user", error: error.message });
   }
 };
-
 
 
 
