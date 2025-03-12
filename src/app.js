@@ -28,7 +28,12 @@ const app = express();
 connectDB();
 
 // Middleware
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors({
+    origin: "*", // Allows requests from any origin
+    credentials: true, // Allows cookies, authorization headers, etc.
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed methods
+    allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
+}));
 app.use(express.json()); // Middleware to parse JSON data
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded data
 

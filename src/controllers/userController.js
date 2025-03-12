@@ -7,7 +7,7 @@ const generateRandom4Digit = () => Math.floor(1000 + Math.random() * 9000);
 
 // Function to generate loginId
 const generateLoginId = (role) => {
-    const rolePrefix = role.slice(0, 2).toUpperCase(); // Take first two letters (CM, AR, VI, etc.)
+    const rolePrefix = role.slice(0, 2).toUpperCase();
     return `${rolePrefix}${generateRandom4Digit()}`;
 };
 
