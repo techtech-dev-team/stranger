@@ -16,44 +16,59 @@ const getCurrentMonth = () => {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   };
 
-// ✅ Register New User
-exports.registerUser = async (req, res) => {
+  exports.registerUser = async (req, res) => {
     try {
-        const { name, mobileNumber, email, role, branchId, centreId, regionId, status } = req.body;
-
-        // Check if user with the same mobile number or email already exists
-        const existingUser = await User.findOne({ $or: [{ mobileNumber }, { email }] });
-        if (existingUser) return res.status(400).json({ message: "User already exists" });
-
-        let loginId = null;
-        let pin = null;
-
-        // Only generate loginId & PIN for specific roles
-        if (["CM", "ARM", "Vision", "ID", "Admin"].includes(role)) {
-            loginId = generateLoginId(role);
-            pin = generateRandom4Digit().toString();
-        }
-
-        const newUser = new User({ 
-            name, 
-            mobileNumber, 
-            email, 
-            role, 
-            branchId, 
-            centreId, 
-            regionId, 
-            status, 
-            loginId, 
-            pin
-        });
-
-        await newUser.save();
-        res.status(201).json({ message: "User registered successfully", user: newUser });
+      const {
+        name,
+        mobileNumber,
+        email,
+        role,
+        branchIds,
+        centreIds,
+        regionIds,
+        status,
+      } = req.body;
+  
+      // Check if user with the same mobile number or email already exists
+      const existingUser = await User.findOne({
+        $or: [{ mobileNumber }, { email }],
+      });
+      if (existingUser)
+        return res.status(400).json({ message: "User already exists" });
+  
+      let loginId = null;
+      let pin = null;
+  
+      // Only generate loginId & PIN for specific roles
+      if (["CM", "ARM", "Vision", "ID", "Admin"].includes(role)) {
+        loginId = generateLoginId(role);
+        pin = generateRandom4Digit().toString();
+      }
+  
+      const newUser = new User({
+        name,
+        mobileNumber,
+        email,
+        role,
+        branchIds,
+        centreIds,
+        regionIds,
+        status,
+        loginId,
+        pin,
+      });
+  
+      await newUser.save();
+      res
+        .status(201)
+        .json({ message: "User registered successfully", user: newUser });
     } catch (error) {
-        res.status(500).json({ message: "Error registering user", error: error.message });
+      res
+        .status(500)
+        .json({ message: "Error registering user", error: error.message });
     }
-};
-
+  };
+  
 // ✅ Login User
 // ✅ Login User
 exports.login = async (req, res) => {
@@ -101,15 +116,21 @@ exports.getAllUsers = async (req, res) => {
 };
 
 // ✅ Get Single User by ID
+// ✅ Get Single User by ID (Fixed)
 exports.getUserById = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id).populate("branchId centreId regionId");
-        if (!user) return res.status(404).json({ message: "User not found" });
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({ message: "Error retrieving user", error: error.message });
-    }
+  try {
+      const user = await User.findById(req.params.id)
+          .populate("branchIds")
+          .populate("centreIds")
+          .populate("regionIds");
+
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json(user);
+  } catch (error) {
+      res.status(500).json({ message: "Error retrieving user", error: error.message });
+  }
 };
+
 
 
 // ✅ Update User
