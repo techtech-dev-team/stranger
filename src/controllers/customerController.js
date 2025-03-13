@@ -1,8 +1,9 @@
 const Customer = require('../models/Customer');
 const Service = require('../models/Service');
 const Staff = require('../models/User');
+const mongoose = require('mongoose');
+const Centre = require('../models/Centre');
 
-// Add a new customer
 
 const addCustomer = async (req, res) => {
   try {
@@ -51,7 +52,6 @@ const addCustomer = async (req, res) => {
   }
 };
 
-// Get all customers added by Centre Manager
 const getCustomers = async (req, res) => {
   try {
     const customers = await Customer.find()
@@ -69,5 +69,91 @@ const getCustomers = async (req, res) => {
 };
 
 
+const getCentreSalesReport = async (req, res) => {
+  try {
+    const { centreId } = req.query;
 
-module.exports = { addCustomer, getCustomers };
+    if (!centreId || !mongoose.isValidObjectId(centreId)) {
+      return res.status(400).json({ message: 'Valid centreId is required' });
+    }
+
+    // 🏪 Fetch Centre and Pay Criteria
+    const centre = await Centre.findById(centreId);
+    if (!centre) {
+      return res.status(404).json({ message: 'Centre not found' });
+    }
+
+    const payCriteria = centre.payCriteria; // "plus" or "minus"
+
+    // Fetch sales data
+    const salesReport = await Customer.aggregate([
+      { $match: { centreId: new mongoose.Types.ObjectId(centreId) } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$inTime" } },
+          totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+          totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+          totalCashCommission: { $sum: "$cashCommission" },
+          totalOnlineCommission: { $sum: "$onlineCommission" },
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          date: "$_id",
+          totalCash: 1,
+          totalOnline: 1,
+          grandTotal: {
+            $cond: {
+              if: { $eq: [payCriteria, "plus"] },
+              then: {
+                $subtract: [
+                  { $add: ["$totalCash", "$totalOnline"] },
+                  { $add: ["$totalCashCommission", "$totalOnlineCommission"] }
+                ]
+              },
+              else: { $add: ["$totalCash", "$totalOnline"] }
+            }
+          },
+          balance: {
+            $cond: {
+              if: { $eq: [payCriteria, "plus"] },
+              then: { $subtract: ["$totalCash", "$totalCashCommission"] },
+              else: "$totalCash"
+            }
+          }
+        }
+      },
+      { $sort: { date: 1 } }
+    ]);
+
+    // 🌟 Calculate Overall Totals
+    let previousBalance = centre.previousBalance;
+    let balance = previousBalance;
+
+    salesReport.forEach(entry => {
+      balance += entry.grandTotal;
+    });
+
+    // 💾 Update Centre with New Balances
+    await Centre.findByIdAndUpdate(centreId, {
+      previousBalance,
+      balance
+    });
+
+    res.status(200).json({
+      message: 'Centre sales report retrieved successfully',
+      centreId,
+      payCriteria,
+      previousBalance,
+      balance,
+      salesReport
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+
+module.exports = { addCustomer, getCustomers, getCentreSalesReport };

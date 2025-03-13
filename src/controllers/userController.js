@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 
 // Function to generate a random 4-digit number
 const generateRandom4Digit = () => Math.floor(1000 + Math.random() * 9000);
@@ -108,7 +109,7 @@ exports.login = async (req, res) => {
 // ✅ Get All Users
 exports.getAllUsers = async (req, res) => {
     try {
-        const users = await User.find().populate("branchId centreId regionId");
+        const users = await User.find().populate("branchIds centreIds regionIds");
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: "Error retrieving users", error: error.message });
@@ -253,5 +254,62 @@ exports.getMonthlyAttendanceReport = async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ message: "Error retrieving monthly attendance report", error: error.message });
+  }
+};
+
+
+exports.getPresentStaffByDate = async (req, res) => {
+  try {
+    const { date, regionId, branchId, centreId } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ message: "Date is required" });
+    }
+
+    // ✅ Build query with optional filters (convert to ObjectId if provided)
+    const query = {};
+    if (regionId && mongoose.isValidObjectId(regionId)) query.regionIds = regionId;
+    if (branchId && mongoose.isValidObjectId(branchId)) query.branchIds = branchId;
+    if (centreId && mongoose.isValidObjectId(centreId)) query.centreIds = centreId;
+
+    // ✅ Fetch all staff based on filters
+    const allStaff = await User.find(query).select("name role monthlyAttendance");
+
+    if (!allStaff.length) {
+      return res.status(404).json({ message: "No staff found for the given filters" });
+    }
+
+    // ✅ Format date as "YYYY-MM" for monthKey
+    const [year, month, day] = date.split("-");
+    const monthKey = `${year}-${month.padStart(2, "0")}`;
+
+    // ✅ Filter staff who were NOT marked absent that day
+    const presentStaff = allStaff.filter((user) => {
+      const attendance = user.monthlyAttendance.get(monthKey);
+      if (!attendance) return true; // No attendance = Present
+
+      // Optional: If using dailyRecords in monthlyAttendance
+      if (attendance.dailyRecords && attendance.dailyRecords.get(date)) {
+        return attendance.dailyRecords.get(date) !== "Absent";
+      }
+
+      // If dailyRecords not used, only track monthly totals
+      return attendance.absent < attendance.totalWorkingDays;
+    });
+
+    if (!presentStaff.length) {
+      return res.status(404).json({ message: "No present staff found for the given filters" });
+    }
+
+    res.json({
+      message: "Present staff retrieved successfully",
+      date,
+      presentStaff,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching present staff",
+      error: error.message,
+    });
   }
 };
