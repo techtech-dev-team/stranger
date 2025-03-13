@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getAllUsers, getUserById, createUser, updateUser, deleteUser , registerUser , login , markAbsent , getAttendanceReport, getMonthlyAttendanceReport} = require("../controllers/userController");
+const { getAllUsers, getUserById, registerUser, updateUser, deleteUser , login , markAbsent , getAttendanceReport, getMonthlyAttendanceReport} = require("../controllers/userController");
 
 // Routes
 router.get("/", getAllUsers); // Get all users (Protected)

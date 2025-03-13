@@ -37,8 +37,7 @@ app.use(cors({
 app.use(express.json()); // Middleware to parse JSON data
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded data
 
-// Routes (No Auth Required)
-app.use("/api/users", userRoutes); // ✅ Added user routes
+app.use("/api/users", userRoutes);
 app.use("/game", gameRoutes);
 
 // Routes (Protected)
