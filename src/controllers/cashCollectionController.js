@@ -1,30 +1,30 @@
 const CashCollection = require("../models/cashCollection");
-
+const User = require("../models/User");
+const Centre = require("../models/Centre");
 // Add a new cash collection entry
 exports.addCashCollection = async (req, res) => {
   try {
     const { centreId, regionId, branchId, amountReceived, fromDate, toDate, amountReceivingDate, remark } = req.body;
 
-    // Check required fields
     if (!centreId || !regionId || !branchId || !amountReceived || !fromDate || !toDate || !amountReceivingDate) {
       return res.status(400).json({ message: "All required fields must be provided." });
     }
 
-    // Extract userId from the token (added automatically by authMiddleware)
-    const userId = req.user?.id;
+    const userId = req.user?._id;
     if (!userId) {
       return res.status(401).json({ message: "User not authenticated." });
     }
 
-    // Fetch centre to get previous balance
     const centre = await Centre.findById(centreId);
     if (!centre) return res.status(404).json({ message: "Centre not found." });
 
-    // Set previous balance and calculate new balance
+    // Set previous balance before collection
     const previousBalance = centre.balance;
-    const newBalance = previousBalance - amountReceived;
 
-    // Update centre with new balance
+    // Balance should be reset to zero after collection
+    const newBalance = 0;
+
+    // Update centre with new balances
     await Centre.findByIdAndUpdate(centreId, {
       previousBalance: previousBalance,
       balance: newBalance,
@@ -48,9 +48,8 @@ exports.addCashCollection = async (req, res) => {
       message: "Cash collection recorded successfully.",
       data: newEntry,
       previousBalance,
-      newBalance,
+      balance: newBalance,
     });
-
   } catch (error) {
     res.status(500).json({ message: "Error adding cash collection.", error: error.message });
   }

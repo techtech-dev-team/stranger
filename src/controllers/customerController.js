@@ -1,6 +1,6 @@
 const Customer = require('../models/Customer');
 const Service = require('../models/Service');
-const Staff = require('../models/User');
+const User = require('../models/User');
 const mongoose = require('mongoose');
 const Centre = require('../models/Centre');
 
@@ -14,7 +14,7 @@ const addCustomer = async (req, res) => {
     if (!serviceExists) return res.status(400).json({ message: 'Invalid service ID' });
 
     // Check if staff exists
-    const userExists = await User.findById(userAttending);
+    const userExists = await User.findById(staffAttending);
     if (!userExists) return res.status(400).json({ message: 'Invalid user ID' });
 
     // Convert inTime and outTime to IST
@@ -23,6 +23,16 @@ const addCustomer = async (req, res) => {
       const date = new Date(utcTime);
       return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
     };
+
+    // Calculate total cash
+    const totalCash = (paymentCash1 || 0) + (paymentCash2 || 0);
+
+    // Update Centre balance
+    const centre = await Centre.findById(centreId);
+    if (!centre) return res.status(404).json({ message: 'Centre not found' });
+
+    centre.balance += totalCash;
+    await centre.save();
 
     const newCustomer = new Customer({
       name,
@@ -51,6 +61,7 @@ const addCustomer = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 const getCustomers = async (req, res) => {
   try {
