@@ -75,8 +75,6 @@ exports.getCashCollections = async (req, res) => {
   }
 };
 
-// Get cash collection summary for a specific region and branch
-// Get cash collection history for a specific region and branch
 exports.getCashCollectionHistory = async (req, res) => {
   try {
     const { regionId, branchId } = req.query;
