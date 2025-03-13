@@ -30,9 +30,17 @@ const userSchema = new mongoose.Schema(
         present: { type: Number, default: 0 },
         absent: { type: Number, default: 0 },
         totalWorkingDays: { type: Number, default: 26 },
+        dailyRecords: {
+          type: Map,
+          of: {
+            status: { type: String, enum: ["Present", "Absent"], required: true },
+          },
+          default: {},
+        },
       },
       default: {},
     },
+    
   },
   { timestamps: true }
 );

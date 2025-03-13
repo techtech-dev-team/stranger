@@ -16,7 +16,21 @@ exports.addCashCollection = async (req, res) => {
       return res.status(401).json({ message: "User not authenticated." });
     }
 
-    // Create new entry
+    // Fetch centre to get previous balance
+    const centre = await Centre.findById(centreId);
+    if (!centre) return res.status(404).json({ message: "Centre not found." });
+
+    // Set previous balance and calculate new balance
+    const previousBalance = centre.balance;
+    const newBalance = previousBalance - amountReceived;
+
+    // Update centre with new balance
+    await Centre.findByIdAndUpdate(centreId, {
+      previousBalance: previousBalance,
+      balance: newBalance,
+    });
+
+    // Create new cash collection entry
     const newEntry = new CashCollection({
       centreId,
       regionId,
@@ -26,15 +40,22 @@ exports.addCashCollection = async (req, res) => {
       toDate,
       amountReceivingDate,
       remark,
-      userId,  // Automatically added
+      userId,
     });
 
     await newEntry.save();
-    res.status(201).json({ message: "Cash collection recorded successfully.", data: newEntry });
+    res.status(201).json({
+      message: "Cash collection recorded successfully.",
+      data: newEntry,
+      previousBalance,
+      newBalance,
+    });
+
   } catch (error) {
     res.status(500).json({ message: "Error adding cash collection.", error: error.message });
   }
 };
+
 
 
 // Get cash collection records for a specific centre
