@@ -88,7 +88,7 @@ const getCentreSalesReport = async (req, res) => {
       return res.status(400).json({ message: 'Valid centreId is required' });
     }
 
-    // 🏪 Fetch Centre and Pay Criteria
+    // Fetch Centre and Pay Criteria
     const centre = await Centre.findById(centreId);
     if (!centre) {
       return res.status(404).json({ message: 'Centre not found' });
@@ -106,6 +106,7 @@ const getCentreSalesReport = async (req, res) => {
           totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
           totalCashCommission: { $sum: "$cashCommission" },
           totalOnlineCommission: { $sum: "$onlineCommission" },
+          totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } } // New field
         }
       },
       {
@@ -114,13 +115,16 @@ const getCentreSalesReport = async (req, res) => {
           date: "$_id",
           totalCash: 1,
           totalOnline: 1,
+          totalCashCommission: 1,
+          totalOnlineCommission: 1,
+          totalCommission: 1, // Include in response
           grandTotal: {
             $cond: {
               if: { $eq: [payCriteria, "plus"] },
-              then: {
+              then: {    
                 $subtract: [
                   { $add: ["$totalCash", "$totalOnline"] },
-                  { $add: ["$totalCashCommission", "$totalOnlineCommission"] }
+                  "$totalCommission"
                 ]
               },
               else: { $add: ["$totalCash", "$totalOnline"] }
@@ -138,7 +142,7 @@ const getCentreSalesReport = async (req, res) => {
       { $sort: { date: 1 } }
     ]);
 
-    // 🌟 Calculate Overall Totals
+    // Calculate Overall Totals
     let previousBalance = centre.previousBalance;
     let balance = previousBalance;
 
@@ -146,7 +150,7 @@ const getCentreSalesReport = async (req, res) => {
       balance += entry.grandTotal;
     });
 
-    // 💾 Update Centre with New Balances
+    // Update Centre with New Balances
     await Centre.findByIdAndUpdate(centreId, {
       previousBalance,
       balance
@@ -165,6 +169,5 @@ const getCentreSalesReport = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
 
 module.exports = { addCustomer, getCustomers, getCentreSalesReport };
