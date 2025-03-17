@@ -170,4 +170,55 @@ const getCentreSalesReport = async (req, res) => {
   }
 };
 
-module.exports = { addCustomer, getCustomers, getCentreSalesReport };
+const getCustomerById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid customer ID' });
+    }
+
+    const customer = await Customer.findById(id)
+      .populate('service')
+      .populate('staffAttending')
+      .populate('branchId')
+      .populate('centreId')
+      .populate('regionId');
+
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    res.status(200).json(customer);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Edit customer by ID
+const editCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid customer ID' });
+    }
+
+    if (updates.inTime) updates.inTime = convertToIST(updates.inTime);
+    if (updates.outTime) updates.outTime = convertToIST(updates.outTime);
+
+    const updatedCustomer = await Customer.findByIdAndUpdate(id, updates, { new: true });
+
+    if (!updatedCustomer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    res.status(200).json({ message: 'Customer updated successfully', customer: updatedCustomer });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+
+module.exports = { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer };
