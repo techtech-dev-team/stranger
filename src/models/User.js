@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema(
     monthlyAttendance: {
       type: Map,
       of: {
-        present: { type: Number, default: 26 },
+        present: { type: Number, default: 0 },
         absent: { type: Number, default: 0 },
         totalWorkingDays: { type: Number, default: 26 },
         dailyRecords: {
@@ -40,9 +40,35 @@ const userSchema = new mongoose.Schema(
       },
       default: {},
     },
-    
   },
   { timestamps: true }
 );
+
+// Pre-save hook to increment present count every day if not absent
+userSchema.pre("save", function (next) {
+  const today = new Date();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const currentDate = today.toISOString().split("T")[0]; // YYYY-MM-DD
+
+  if (!this.monthlyAttendance.has(currentMonth)) {
+    this.monthlyAttendance.set(currentMonth, {
+      present: 0,
+      absent: 0,
+      totalWorkingDays: 26,
+      dailyRecords: new Map(),
+    });
+  }
+
+  const attendance = this.monthlyAttendance.get(currentMonth);
+
+  // Increment present count if absent not marked today
+  if (!attendance.dailyRecords.has(currentDate)) {
+    attendance.present += 1;
+    attendance.dailyRecords.set(currentDate, { status: "Present" });
+  }
+
+  this.markModified("monthlyAttendance");
+  next();
+});
 
 module.exports = mongoose.model("User", userSchema);

@@ -160,16 +160,17 @@ exports.markAbsent = async (req, res) => {
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Get the current month from the timestamp (format: YYYY-MM)
-    const currentDate = new Date();
-    const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
+    const today = new Date();
+    const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+    const currentDate = today.toISOString().split("T")[0]; // YYYY-MM-DD
 
     // Initialize attendance for the current month if not already present
     if (!user.monthlyAttendance.has(currentMonth)) {
       user.monthlyAttendance.set(currentMonth, {
         present: 0,
         absent: 0,
-        totalWorkingDays: 26
+        totalWorkingDays: 26,
+        dailyRecords: new Map(),
       });
     }
 
@@ -180,9 +181,14 @@ exports.markAbsent = async (req, res) => {
       return res.status(400).json({ message: "Cannot mark absent. All working days already used for this month." });
     }
 
-    // Increment absent count and update present accordingly
-    attendance.absent += 1;
-    attendance.present = attendance.totalWorkingDays - attendance.absent;
+    // Mark absent for today if not already marked
+    if (!attendance.dailyRecords.has(currentDate)) {
+      attendance.absent += 1;
+      attendance.dailyRecords.set(currentDate, { status: "Absent" });
+
+      // Decrease present count if marked absent
+      if (attendance.present > 0) attendance.present -= 1;
+    }
 
     // Notify Mongoose that monthlyAttendance is modified
     user.markModified("monthlyAttendance");
@@ -198,6 +204,7 @@ exports.markAbsent = async (req, res) => {
     res.status(500).json({ message: "Error marking user absent", error: error.message });
   }
 };
+
 
 exports.getAttendanceReport = async (req, res) => {
   try {
@@ -223,6 +230,7 @@ exports.getAttendanceReport = async (req, res) => {
     res.status(500).json({ message: "Error retrieving attendance report", error: error.message });
   }
 };
+
 
 exports.getMonthlyAttendanceReport = async (req, res) => {
   try {
