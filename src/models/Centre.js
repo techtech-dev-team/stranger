@@ -13,7 +13,14 @@ const centreSchema = new mongoose.Schema({
   branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", required: true },
   regionId: { type: mongoose.Schema.Types.ObjectId, ref: "Region", required: true },
   previousBalance: { type: Number, default: 0 }, 
-  balance: { type: Number, default: 0 }
-});
+  balance: { 
+    type: Number, 
+    required: false, 
+    default: 0, 
+    validate: {
+      validator: (v) => !isNaN(v) && isFinite(v),
+      message: props => `${props.value} is not a valid number!`
+    }
+  }});
 
 module.exports = mongoose.model("Centre", centreSchema);
