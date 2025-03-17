@@ -317,3 +317,32 @@ exports.getPresentStaffByDate = async (req, res) => {
     });
   }
 };
+
+exports.deactivateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.status === "Inactive") {
+      return res
+        .status(400)
+        .json({ message: "User is already inactive" });
+    }
+
+    user.status = "Inactive";
+    await user.save();
+
+    res.json({
+      message: "User status changed to Inactive successfully",
+      user,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error changing user status", error: error.message });
+  }
+};

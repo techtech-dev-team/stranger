@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getAllUsers, getUserById,getPresentStaffByDate, registerUser, updateUser, deleteUser , login , markAbsent , getAttendanceReport, getMonthlyAttendanceReport} = require("../controllers/userController");
+const { getAllUsers, getUserById,getPresentStaffByDate, registerUser, updateUser, deleteUser , login , markAbsent , getAttendanceReport, getMonthlyAttendanceReport , deactivateUser } = require("../controllers/userController");
 
 // Routes
 router.get("/", getAllUsers); // Get all users (Protected)
@@ -13,6 +13,8 @@ router.delete("/:id", deleteUser); // Delete user (Admin only)
 router.put("/:id/mark-absent", markAbsent);
 router.get("/:id/attendance", getAttendanceReport);
 router.get("/:id/attendance/:month", getMonthlyAttendanceReport);  // Month-wise attendance report
+router.put("/:id/deactivate", deactivateUser);
+
 
 
 
