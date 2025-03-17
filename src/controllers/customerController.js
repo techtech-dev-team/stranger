@@ -25,7 +25,7 @@ const addCustomer = async (req, res) => {
     };
 
     // Calculate total cash
-    const totalCash = (paymentCash1 || 0) + (paymentCash2 || 0);
+    const totalCash = Number(paymentCash1)
 
     // Update Centre balance
     const centre = await Centre.findById(centreId);
@@ -195,30 +195,53 @@ const getCustomerById = async (req, res) => {
   }
 };
 
-// Edit customer by ID
 const editCustomer = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-
+    console.log(updates);
+    
     if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({ message: 'Invalid customer ID' });
+      return res.status(400).json({ message: "Invalid customer ID" });
     }
 
-    if (updates.inTime) updates.inTime = convertToIST(updates.inTime);
-    if (updates.outTime) updates.outTime = convertToIST(updates.outTime);
+    const existingCustomer = await Customer.findById(id);
+    if (!existingCustomer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    const centre = await Centre.findById(existingCustomer.centreId);
+    if (!centre) {
+      return res.status(404).json({ message: "Centre not found" });
+    }
+
+    console.log("Centre Pay Criteria:", centre.payCriteria);
+
+    const newPaymentCash2 = Number(updates.paymentCash2) || 0;
+    const cashCommissionAmount = Number(updates.cashCommission) || 0; 
+
+    if (centre.payCriteria === "plus") {
+      console.log(`Applying PLUS logic: Adding ${newPaymentCash2} - ${cashCommissionAmount}`);
+      centre.balance += newPaymentCash2 - cashCommissionAmount;
+    } else {
+      console.log(`Applying DEFAULT logic: Adding ${newPaymentCash2}`);
+      centre.balance += newPaymentCash2;
+    }
+
+    await centre.save();
 
     const updatedCustomer = await Customer.findByIdAndUpdate(id, updates, { new: true });
 
-    if (!updatedCustomer) {
-      return res.status(404).json({ message: 'Customer not found' });
-    }
-
-    res.status(200).json({ message: 'Customer updated successfully', customer: updatedCustomer });
+    res.status(200).json({ message: "Customer updated successfully", customer: updatedCustomer });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Server Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+
+
 
 
 module.exports = { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer };
