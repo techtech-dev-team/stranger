@@ -161,43 +161,41 @@ exports.markAbsent = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const today = new Date();
-    const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+    const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`; // YYYY-MM
     const currentDate = today.toISOString().split("T")[0]; // YYYY-MM-DD
 
-    // Initialize attendance for the current month if not already present
-    if (!user.monthlyAttendance.has(currentMonth)) {
-      user.monthlyAttendance.set(currentMonth, {
+    // Ensure monthlyAttendance exists
+    if (!user.monthlyAttendance[currentMonth]) {
+      user.monthlyAttendance[currentMonth] = {
         present: 0,
         absent: 0,
         totalWorkingDays: 26,
-        dailyRecords: new Map(),
-      });
+        dailyRecords: {}, // Changed from Map to object for Mongoose compatibility
+      };
     }
 
-    const attendance = user.monthlyAttendance.get(currentMonth);
+    const attendance = user.monthlyAttendance[currentMonth];
 
-    // Check if absent days have reached the limit for the month
-    if (attendance.absent >= attendance.totalWorkingDays) {
-      return res.status(400).json({ message: "Cannot mark absent. All working days already used for this month." });
+    // Check if the user is already marked absent today
+    if (attendance.dailyRecords[currentDate]?.status === "Absent") {
+      return res.status(400).json({ message: "User is already marked absent for today." });
     }
 
-    // Mark absent for today if not already marked
-    if (!attendance.dailyRecords.has(currentDate)) {
-      attendance.absent += 1;
-      attendance.dailyRecords.set(currentDate, { status: "Absent" });
+    // Mark absent
+    attendance.absent += 1;
+    attendance.dailyRecords[currentDate] = { status: "Absent" };
 
-      // Decrease present count if marked absent
-      if (attendance.present > 0) attendance.present -= 1;
-    }
+    // Decrease present count if applicable
+    if (attendance.present > 0) attendance.present -= 1;
 
-    // Notify Mongoose that monthlyAttendance is modified
+    // Notify Mongoose of the modified structure
     user.markModified("monthlyAttendance");
     await user.save();
 
     res.json({
-      message: "User marked absent",
+      message: "User marked absent successfully",
       month: currentMonth,
-      attendance
+      attendance,
     });
 
   } catch (error) {
