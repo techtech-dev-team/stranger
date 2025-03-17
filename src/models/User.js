@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema(
     monthlyAttendance: {
       type: Map,
       of: {
-        present: { type: Number, default: 0 },
+        present: { type: Number, default: 26 },
         absent: { type: Number, default: 0 },
         totalWorkingDays: { type: Number, default: 26 },
         dailyRecords: {
