@@ -62,7 +62,6 @@ const addCustomer = async (req, res) => {
   }
 };
 
-
 const getCustomers = async (req, res) => {
   try {
     const customers = await Customer.find()
@@ -79,96 +78,103 @@ const getCustomers = async (req, res) => {
   }
 };
 
-
 const getCentreSalesReport = async (req, res) => {
   try {
     const { centreId } = req.query;
 
-    if (!centreId || !mongoose.isValidObjectId(centreId)) {
-      return res.status(400).json({ message: 'Valid centreId is required' });
+    let centresQuery = centreId && mongoose.isValidObjectId(centreId) ? { _id: centreId } : {};
+
+    // Fetch all centers or specific center
+    const centres = await Centre.find(centresQuery);
+    if (!centres.length) {
+      return res.status(404).json({ message: 'No centers found' });
     }
 
-    // Fetch Centre and Pay Criteria
-    const centre = await Centre.findById(centreId);
-    if (!centre) {
-      return res.status(404).json({ message: 'Centre not found' });
-    }
+    let responseData = [];
 
-    const payCriteria = centre.payCriteria; // "plus" or "minus"
+    for (const centre of centres) {
+      const payCriteria = centre.payCriteria; // "plus" or "minus"
 
-    // Fetch sales data
-    const salesReport = await Customer.aggregate([
-      { $match: { centreId: new mongoose.Types.ObjectId(centreId) } },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$inTime" } },
-          totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
-          totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
-          totalCashCommission: { $sum: "$cashCommission" },
-          totalOnlineCommission: { $sum: "$onlineCommission" },
-          totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } } // New field
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          date: "$_id",
-          totalCash: 1,
-          totalOnline: 1,
-          totalCashCommission: 1,
-          totalOnlineCommission: 1,
-          totalCommission: 1, // Include in response
-          grandTotal: {
-            $cond: {
-              if: { $eq: [payCriteria, "plus"] },
-              then: {    
-                $subtract: [
-                  { $add: ["$totalCash", "$totalOnline"] },
-                  "$totalCommission"
-                ]
-              },
-              else: { $add: ["$totalCash", "$totalOnline"] }
-            }
-          },
-          balance: {
-            $cond: {
-              if: { $eq: [payCriteria, "plus"] },
-              then: { $subtract: ["$totalCash", "$totalCashCommission"] },
-              else: "$totalCash"
+      const salesReport = await Customer.aggregate([
+        { $match: { centreId: centre._id } },
+        {
+          $group: {
+            _id: null,
+            totalCustomers: { $sum: 1 }, // Count the number of customers
+            totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+            totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+            totalCashCommission: { $sum: "$cashCommission" },
+            totalOnlineCommission: { $sum: "$onlineCommission" },
+            totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            totalCustomers: 1,
+            totalCash: 1,
+            totalOnline: 1,
+            totalCashCommission: 1,
+            totalOnlineCommission: 1,
+            totalCommission: 1,
+            grandTotal: {
+              $cond: {
+                if: { $eq: [payCriteria, "plus"] },
+                then: {    
+                  $subtract: [
+                    { $add: ["$totalCash", "$totalOnline"] },
+                    "$totalCommission"
+                  ]
+                },
+                else: { $add: ["$totalCash", "$totalOnline"] }
+              }
+            },
+            balance: {
+              $cond: {
+                if: { $eq: [payCriteria, "plus"] },
+                then: { $subtract: ["$totalCash", "$totalCashCommission"] },
+                else: "$totalCash"
+              }
             }
           }
         }
-      },
-      { $sort: { date: 1 } }
-    ]);
+      ]);
 
-    // Calculate Overall Totals
-    let previousBalance = centre.previousBalance;
-    let balance = previousBalance;
+      // Calculate totals for the center
+      let previousBalance = centre.previousBalance;
+      let balance = previousBalance;
+      if (salesReport.length > 0) {
+        balance += salesReport[0].grandTotal;
+      }
 
-    salesReport.forEach(entry => {
-      balance += entry.grandTotal;
-    });
+      // Update Centre balance
+      await Centre.findByIdAndUpdate(centre._id, { previousBalance, balance });
 
-    // Update Centre with New Balances
-    await Centre.findByIdAndUpdate(centreId, {
-      previousBalance,
-      balance
-    });
+      responseData.push({
+        centreId: centre._id,
+        centreName: centre.name,
+        centreCode: centre.centreId,
+        payCriteria,
+        previousBalance,
+        balance,
+        totalCash: salesReport[0]?.totalCash || 0,
+        totalOnline: salesReport[0]?.totalOnline || 0,
+        totalSales: salesReport[0]?.grandTotal || 0,
+        totalCustomers: salesReport[0]?.totalCustomers || 0, // Added customer count
+        salesReport
+      });
+    }
 
     res.status(200).json({
-      message: 'Centre sales report retrieved successfully',
-      centreId,
-      payCriteria,
-      previousBalance,
-      balance,
-      salesReport
+      message: 'Sales report retrieved successfully',
+      data: responseData
     });
 
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 const getCustomerById = async (req, res) => {
   try {
@@ -238,10 +244,5 @@ const editCustomer = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-
-
-
-
 
 module.exports = { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer };

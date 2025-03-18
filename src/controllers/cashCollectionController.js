@@ -57,19 +57,17 @@ exports.addCashCollection = async (req, res) => {
   }
 };
 
-
-
-
-// Get cash collection records for a specific centre
 exports.getCashCollections = async (req, res) => {
   try {
     const { centreId } = req.params;
-    const collections = await CashCollection.find({ centreId })
-      .populate("regionId branchId centreId") // Populate region, branch, and centre details
+    const query = centreId ? { centreId } : {}; // Fetch all if no centreId is provided
+
+    const collections = await CashCollection.find(query)
+      .populate("regionId branchId centreId userId")
       .sort({ amountReceivingDate: -1 });
 
     if (collections.length === 0) {
-      return res.status(404).json({ message: "No cash collection records found for this centre." });
+      return res.status(404).json({ message: "No cash collection records found." });
     }
 
     res.status(200).json({ message: "Cash collection records retrieved successfully.", data: collections });
@@ -77,6 +75,7 @@ exports.getCashCollections = async (req, res) => {
     res.status(500).json({ message: "Error retrieving cash collection records.", error: error.message });
   }
 };
+
 
 exports.getCashCollectionHistory = async (req, res) => {
   try {

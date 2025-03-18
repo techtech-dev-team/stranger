@@ -9,8 +9,8 @@ const moment = require('moment');
 exports.getAllCentres = async (req, res) => {
   try {
     const centres = await Centre.find({})
-      .populate("branchId", "name shortCode") // Fetch branch name and short code
-      .populate("regionId", "name"); // Fetch region name
+      .populate("branchId") // Fetch branch name and short code
+      .populate("regionId"); // Fetch region name
 
     if (!centres.length) {
       return res.status(404).json({ message: "No centres found" });

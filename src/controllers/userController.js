@@ -118,6 +118,26 @@ exports.getAllUsers = async (req, res) => {
     });
   }
 };
+exports.getClubStaffUsers = async (req, res) => {
+  try {
+    const clubStaffUsers = await User.find({ role: "ClubStaff" })
+      .populate("branchIds")
+      .populate("centreIds")
+      .populate("regionIds");
+
+    if (!clubStaffUsers) {
+      return res.status(404).json({ message: "No club staff users found" });
+    }
+
+    res.json(clubStaffUsers);
+  } catch (error) {
+    console.error("Database Query Error:", error);
+    res.status(500).json({
+      message: "Error retrieving club staff users",
+      error: error.message,
+    });
+  }
+};
 
 exports.getUserById = async (req, res) => {
   try {
