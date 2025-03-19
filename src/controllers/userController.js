@@ -155,13 +155,49 @@ exports.getUserById = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
   try {
-    const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!updatedUser) return res.status(404).json({ message: "User not found" });
-    res.json(updatedUser);
+    const { id } = req.params;
+    let { regionIds, branchIds, centreIds } = req.body;
+
+    console.log("Received data:", { regionIds, branchIds, centreIds });
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid user ID format" });
+    }
+
+    // Ensure we are storing only ObjectIds
+    const extractIds = (arr) =>
+      arr
+        .map((item) => (typeof item === "object" && item._id ? item._id : item)) // Extract _id if object
+        .filter((id) => mongoose.Types.ObjectId.isValid(id)); // Ensure valid ObjectId
+
+    regionIds = extractIds(regionIds || []);
+    branchIds = extractIds(branchIds || []);
+    centreIds = extractIds(centreIds || []);
+
+    console.log("Processed IDs:", { regionIds, branchIds, centreIds });
+
+    // Find user
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Update fields
+    user.regionIds = regionIds;
+    user.branchIds = branchIds;
+    user.centreIds = centreIds;
+
+    await user.save();
+
+    res.json({ message: "User updated successfully", user });
   } catch (error) {
-    res.status(500).json({ message: "Error updating user", error: error.message });
+    console.error("Error updating user:", error.stack || error);
+    res.status(500).json({ error: "Internal Server Error", details: error.message });
   }
 };
+
+
 
 exports.deleteUser = async (req, res) => {
   try {

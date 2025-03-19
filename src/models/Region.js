@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const regionSchema = new mongoose.Schema({
-  regionId: { type: String, required: true, unique: true }, // Unique region identifier (0001)
+  regionId: { type: String, required: false, unique: true }, // Unique region identifier (0001)
   name: { type: String, required: true, unique: true }, // Region name (Andhra Pradesh)
   shortCode: { type: String, required: true, unique: true } // Short code (AP)
 });

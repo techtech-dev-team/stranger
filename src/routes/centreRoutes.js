@@ -8,8 +8,33 @@ const Expense = require("../models/Expense");
 const router = express.Router();
 
 router.get("/", getAllCentres);
+router.post('/', async (req, res) => {
+    const { name, shortCode, centreId,branchName, payCriteria, regionId, branchId, status } = req.body;
+
+    try {
+        const newCentre = new Centre({
+            name,
+            shortCode,
+            centreId,
+            branchName,
+            payCriteria,
+            regionId,
+            branchId,
+            status
+        });
+
+        await newCentre.save();
+        res.status(201).json({ message: "Centre added successfully", centre: newCentre });
+    } catch (error) {
+        console.log(error);  // Log the error details
+        res.status(500).json({ message: "Error adding centre", error: error.message });
+    }
+});
+
 router.get("/:id", getCentreById);
+
 router.get("/inactive/list", getInactiveCentres);
+
 router.get("/active/list", getActiveCentres);
 router.get("/report/:centerId", async (req, res) => {
     try {
@@ -57,7 +82,7 @@ router.get("/report/:centerId", async (req, res) => {
                     grandTotal: {
                         $cond: {
                             if: { $eq: [center.payCriteria, "plus"] },
-                            then: {    
+                            then: {
                                 $subtract: [
                                     { $add: ["$totalCash", "$totalOnline"] },
                                     "$totalCommission"
@@ -121,6 +146,51 @@ router.get("/report/:centerId", async (req, res) => {
         res.status(500).json({ success: false, message: "Server error" });
     }
 });
+
+router.put('/:centreId', async (req, res) => {
+    const { centreId } = req.params;
+    const { name, shortCode, CentreID, payCriteria, regionId, branchId } = req.body;
+
+    try {
+        const updatedCentre = await Centre.findByIdAndUpdate(
+            centreId,
+            { name, shortCode, CentreID, payCriteria, regionId, branchId },
+            { new: true }
+        );
+
+        if (!updatedCentre) {
+            return res.status(404).json({ message: "Centre not found" });
+        }
+
+        res.json({ message: "Centre updated successfully", centre: updatedCentre });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating centre", error: error.message });
+    }
+});
+router.put("/:centreId/status", async (req, res) => {
+    try {
+        const { status } = req.body;
+        const centre = await Centre.findByIdAndUpdate(
+            req.params.centreId,
+            { status },
+            { new: true }
+        );
+        if (!centre) return res.status(404).send("Centre not found");
+        res.json(centre);
+    } catch (error) {
+        res.status(400).send("Error updating status");
+    }
+});
+router.delete("/:centreId", async (req, res) => {
+    try {
+        const centre = await Centre.findByIdAndDelete(req.params.centreId);
+        if (!centre) return res.status(404).send("Centre not found");
+        res.json({ message: "Centre deleted successfully" });
+    } catch (error) {
+        res.status(400).send("Error deleting centre");
+    }
+});
+
 
 
 
