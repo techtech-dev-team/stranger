@@ -18,6 +18,7 @@ const centreRoutes = require("./routes/centreRoutes");
 const cashCollectionRoutes = require("./routes/cashCollectionRoutes");
 const gameRoutes = require("./routes/gameRoutes");
 const userRoutes = require("./routes/userRoutes"); // ✅ Added user routes
+const regionBranchCentre = require("./routes/regionBranchCentreRoutes"); // ✅ Added regionBranchCentre routes
 
 const { protect } = require("./middleware/authMiddleware"); // Import auth middleware
 
@@ -53,5 +54,6 @@ app.use("/api/regions", regionRoutes);
 app.use("/api/branches", branchRoutes);
 app.use("/api/centres", centreRoutes);
 app.use("/api/cash-collection", cashCollectionRoutes);
+app.use("/api/regions-branches-centres", regionBranchCentre); // ✅ Added regionBranchCentre routes
 
 module.exports = app;
