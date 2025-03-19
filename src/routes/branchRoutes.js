@@ -1,5 +1,9 @@
 const express = require("express");
-const { getAllBranches, getBranchById, getMonthlySalesByBranch, getMonthlyClientsByBranch , getCombinedMonthlySales , getCombinedMonthlyClients } = require("../controllers/branchController");
+const { getAllBranches, getMonthlySalesByBranch, getMonthlyClientsByBranch , getCombinedMonthlySales , getCombinedMonthlyClients,
+    getBranchById,
+    createBranch,
+    updateBranch,
+    deleteBranch } = require("../controllers/branchController");
 
 const router = express.Router();
 
@@ -13,6 +17,16 @@ router.get("/", getAllBranches);
 // @desc   Get a branch by ID
 // @access Public
 router.get("/:id", getBranchById);
+router.post("/", createBranch);
 
+// @route  PUT /api/branches/:id
+// @desc   Update a branch by ID
+// @access Private
+router.put("/:id", updateBranch);
+
+// @route  DELETE /api/branches/:id
+// @desc   Delete a branch by ID
+// @access Private
+router.delete("/:id", deleteBranch);
 
 module.exports = router;

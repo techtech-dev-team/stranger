@@ -195,8 +195,4 @@ router.delete("/:centreId", async (req, res) => {
     }
 });
 
-
-
-
-
 module.exports = router;
