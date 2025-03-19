@@ -1,11 +1,152 @@
 const Centre = require("../models/Centre");
 const Customer = require("../models/Customer");
-const mongoose = require('mongoose');
-const moment = require('moment');
+const mongoose = require("mongoose");
+const moment = require("moment");
 
-// @desc Get all centres
-// @route GET /api/centres
-// @access Public
+// ===== Helpers =====
+
+// Validate ObjectId
+const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
+
+// Initialize Monthly Data
+const initializeMonthlyData = () =>
+  Array.from({ length: 12 }, (_, i) => ({
+    month: moment().month(i).format("MMMM"),
+    value: 0,
+  }));
+
+// Fetch Customers for Year (All Centres or Specific Centre)
+const getCustomersForYearByCentre = async (year, centreId = null) => {
+  const startOfYear = moment().year(year).startOf("year").toDate();
+  const endOfYear = moment().year(year).endOf("year").toDate();
+
+  const query = { createdAt: { $gte: startOfYear, $lt: endOfYear } };
+  if (centreId) query.centreId = new mongoose.Types.ObjectId(centreId);
+
+  return Customer.find(query);
+};
+
+// Extract and validate centreId
+const extractCentreId = (rawCentreId) => {
+  if (!rawCentreId) return null;
+  const centreId = rawCentreId.$oid ? rawCentreId.$oid : rawCentreId;
+  return isValidObjectId(centreId) ? centreId : null;
+};
+
+// ===== APIs =====
+
+// 📌 Get Combined Monthly Sales for All Centres
+exports.getCombinedMonthlySalesByCentre = async (req, res) => {
+  try {
+    const { year } = req.query;
+    const validYear = parseInt(year) || moment().year();
+    if (isNaN(validYear)) {
+      return res.status(400).json({ message: "Invalid year" });
+    }
+
+    const customers = await getCustomersForYearByCentre(validYear);
+    const monthlySales = initializeMonthlyData();
+
+    customers.forEach((customer) => {
+      const monthIndex = moment(customer.createdAt).month();
+      const totalCash = (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
+      const totalOnline = (customer.paymentOnline1 || 0) + (customer.paymentOnline2 || 0);
+      const totalCommission = (customer.cashCommission || 0) + (customer.onlineCommission || 0);
+      monthlySales[monthIndex].value += totalCash + totalOnline - totalCommission;
+    });
+
+    res.status(200).json(monthlySales);
+  } catch (error) {
+    console.error("Error fetching combined monthly sales by centre:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 📌 Get Monthly Sales for a Specific Centre
+exports.getMonthlySalesByCentre = async (req, res) => {
+  try {
+    const { centreId: rawCentreId, year } = req.query;
+    const centreId = extractCentreId(rawCentreId);
+    if (!centreId) {
+      return res.status(400).json({ message: "Invalid centreId" });
+    }
+
+    const validYear = parseInt(year) || moment().year();
+    if (isNaN(validYear)) {
+      return res.status(400).json({ message: "Invalid year" });
+    }
+
+    const customers = await getCustomersForYearByCentre(validYear, centreId);
+    const monthlySales = initializeMonthlyData();
+
+    customers.forEach((customer) => {
+      const monthIndex = moment(customer.createdAt).month();
+      const totalCash = (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
+      const totalOnline = (customer.paymentOnline1 || 0) + (customer.paymentOnline2 || 0);
+      const totalCommission = (customer.cashCommission || 0) + (customer.onlineCommission || 0);
+      monthlySales[monthIndex].value += totalCash + totalOnline - totalCommission;
+    });
+
+    res.status(200).json(monthlySales);
+  } catch (error) {
+    console.error("Error fetching monthly sales by centre:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 📌 Get Combined Monthly Clients for All Centres
+exports.getCombinedMonthlyClientsByCentre = async (req, res) => {
+  try {
+    const { year } = req.query;
+    const validYear = parseInt(year) || moment().year();
+    if (isNaN(validYear)) {
+      return res.status(400).json({ message: "Invalid year" });
+    }
+
+    const customers = await getCustomersForYearByCentre(validYear);
+    const monthlyClients = initializeMonthlyData();
+
+    customers.forEach((customer) => {
+      const monthIndex = moment(customer.createdAt).month();
+      monthlyClients[monthIndex].value += 1;
+    });
+
+    res.status(200).json(monthlyClients);
+  } catch (error) {
+    console.error("Error fetching combined monthly clients by centre:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 📌 Get Monthly Clients for a Specific Centre
+exports.getMonthlyClientsByCentre = async (req, res) => {
+  try {
+    const { centreId: rawCentreId, year } = req.query;
+    const centreId = extractCentreId(rawCentreId);
+    if (!centreId) {
+      return res.status(400).json({ message: "Invalid centreId" });
+    }
+
+    const validYear = parseInt(year) || moment().year();
+    if (isNaN(validYear)) {
+      return res.status(400).json({ message: "Invalid year" });
+    }
+
+    const customers = await getCustomersForYearByCentre(validYear, centreId);
+    const monthlyClients = initializeMonthlyData();
+
+    customers.forEach((customer) => {
+      const monthIndex = moment(customer.createdAt).month();
+      monthlyClients[monthIndex].value += 1;
+    });
+
+    res.status(200).json(monthlyClients);
+  } catch (error) {
+    console.error("Error fetching monthly clients by centre:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 exports.getAllCentres = async (req, res) => {
   try {
     const centres = await Centre.find({})
@@ -22,9 +163,6 @@ exports.getAllCentres = async (req, res) => {
   }
 };
 
-// @desc Get a single centre by ID
-// @route GET /api/centres/:id
-// @access Public
 exports.getCentreById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -55,9 +193,6 @@ exports.getCentreById = async (req, res) => {
   }
 };
 
-// @desc Get inactive centres (no customer entry today)
-// @route GET /api/centres/inactive
-// @access Public
 exports.getInactiveCentres = async (req, res) => {
   try {
     const today = moment().startOf('day').toDate();

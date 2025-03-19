@@ -1,12 +1,16 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const { getAllCentres, getCentreById, getInactiveCentres, getActiveCentres } = require("../controllers/centreController");
+const { getAllCentres, getCentreById, getInactiveCentres, getActiveCentres  , getCombinedMonthlySalesByCentre , getMonthlySalesByCentre , getCombinedMonthlyClientsByCentre , getMonthlyClientsByCentre } = require("../controllers/centreController");
 const Centre = require("../models/Centre");
 const Customer = require("../models/Customer");
 const Expense = require("../models/Expense");
 
 const router = express.Router();
 
+router.get("/monthly-sales", getMonthlySalesByCentre);
+router.get("/combined-sales", getCombinedMonthlySalesByCentre);
+router.get("/monthly-clients", getMonthlyClientsByCentre);
+router.get("/combined-clients", getCombinedMonthlyClientsByCentre);
 router.get("/", getAllCentres);
 router.get("/:id", getCentreById);
 router.get("/inactive/list", getInactiveCentres);
