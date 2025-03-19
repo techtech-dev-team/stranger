@@ -175,7 +175,6 @@ const getCentreSalesReport = async (req, res) => {
   }
 };
 
-
 const getCustomerById = async (req, res) => {
   try {
     const { id } = req.params;

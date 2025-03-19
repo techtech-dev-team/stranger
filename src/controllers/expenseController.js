@@ -1,6 +1,5 @@
 const Expense = require('../models/Expense');
 
-// Add a new expense
 exports.addExpense = async (req, res) => {
   try {
     const { expenseDate, paidTo, reason, amount, verified, regionIds, branchIds, centreIds } = req.body;
@@ -23,8 +22,6 @@ exports.addExpense = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-// Get all expenses
 exports.getAllExpenses = async (req, res) => {
   try {
     const expenses = await Expense.find()
@@ -38,8 +35,6 @@ exports.getAllExpenses = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-// Get a single expense by ID
 exports.getExpenseById = async (req, res) => {
   try {
     const expense = await Expense.findById(req.params.id)
@@ -54,8 +49,6 @@ exports.getExpenseById = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-// Update an expense
 exports.updateExpense = async (req, res) => {
   try {
     const { expenseDate, paidTo, reason, amount, verified, regionIds, branchIds, centreIds } = req.body;
@@ -78,9 +71,6 @@ exports.updateExpense = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-
-// Delete an expense
 exports.deleteExpense = async (req, res) => {
   try {
     const expense = await Expense.findByIdAndDelete(req.params.id);

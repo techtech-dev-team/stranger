@@ -16,7 +16,4 @@ router.get("/:id/attendance", getAttendanceReport);
 router.get("/:id/attendance/:month", getMonthlyAttendanceReport);
 router.put("/:id/deactivate", deactivateUser);
 
-
-
-
 module.exports = router;
