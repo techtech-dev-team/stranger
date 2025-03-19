@@ -1,5 +1,5 @@
 const express = require("express");
-const { getAllRegions, getRegionById , getRegionStatistics , getMonthlySales , getMonthlyClients } = require("../controllers/regionController");
+const { getAllRegions, getRegionById , getRegionStatistics , getMonthlySales , getMonthlyClients , addRegion , editRegion , deleteRegion  } = require("../controllers/regionController");
 
 const router = express.Router();
 router.get("/statistics/data", getRegionStatistics);

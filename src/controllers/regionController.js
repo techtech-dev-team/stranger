@@ -164,38 +164,6 @@ exports.addRegion = async (req, res) => {
   }
 };
 
-<<<<<<< HEAD
-=======
-exports.editRegion = async (req, res) => {
-  const { name, shortCode } = req.body;
-  try {
-      const region = await Region.findByIdAndUpdate(
-          req.params.id,
-          { name, shortCode },
-          { new: true }
-      );
-      if (!region) {
-          return res.status(404).json({ message: "Region not found" });
-      }
-      res.status(200).json({ message: "Region updated successfully", region });
-  } catch (error) {
-      console.error("Error updating region:", error);
-      res.status(500).json({ message: "Server error" });
-  }
-};
-// In regionController.js
-exports.addRegion = async (req, res) => {
-  const { name, shortCode } = req.body;
-  try {
-      const region = new Region({ name, shortCode });
-      await region.save();
-      res.status(201).json({ message: "Region added successfully", region });
-  } catch (error) {
-      console.error("Error adding region:", error);
-      res.status(500).json({ message: "Server error" });
-  }
-};
-
 exports.editRegion = async (req, res) => {
   const { name, shortCode } = req.body;
   try {
