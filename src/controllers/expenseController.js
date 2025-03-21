@@ -3,7 +3,8 @@ const Expense = require('../models/Expense');
 exports.addExpense = async (req, res) => {
   try {
     const { expenseDate, paidTo, reason, amount, verified, regionIds, branchIds, centreIds } = req.body;
-
+    console.log(req.body);
+    
     const newExpense = new Expense({
       expenseDate,
       paidTo,
@@ -17,7 +18,8 @@ exports.addExpense = async (req, res) => {
 
     await newExpense.save();
     res.status(201).json({ message: 'Expense added successfully', expense: newExpense });
-
+    console.log(newExpense);
+    
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
