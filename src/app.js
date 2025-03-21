@@ -19,6 +19,14 @@ const cashCollectionRoutes = require("./routes/cashCollectionRoutes");
 const gameRoutes = require("./routes/gameRoutes");
 const userRoutes = require("./routes/userRoutes"); // ✅ Added user routes
 const regionBranchCentre = require("./routes/regionBranchCentreRoutes"); // ✅ Added regionBranchCentre routes
+const notificationRoutes = require('./routes/notificationRoutes');
+
+const { checkMissedEntries } = require('./controllers/notificationController');
+
+// Run every minute to check missed entries and log them
+setInterval(checkMissedEntries, 60 * 1000);
+console.log('Missed entry checker started...');
+
 
 const { protect } = require("./middleware/authMiddleware"); // Import auth middleware
 
@@ -55,5 +63,8 @@ app.use("/api/branches", branchRoutes);
 app.use("/api/centres", centreRoutes);
 app.use("/api/cash-collection", cashCollectionRoutes);
 app.use("/api/regions-branches-centres", regionBranchCentre); // ✅ Added regionBranchCentre routes
+app.use('/api/notifications', notificationRoutes);
+
+
 
 module.exports = app;
