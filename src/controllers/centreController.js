@@ -249,3 +249,56 @@ exports.getActiveCentres = async (req, res) => {
   }
 };
 
+exports.getCentreStatistics = async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date || !moment(date, "YYYY-MM-DD", true).isValid()) {
+      return res.status(400).json({ message: "Invalid or missing date parameter" });
+    }
+
+    const startOfDay = moment(date).startOf("day").toDate();
+    const endOfDay = moment(date).endOf("day").toDate();
+
+    // Fetch all centres
+    const centres = await Centre.find({});
+    if (!centres.length) {
+      return res.status(404).json({ message: "No centres found" });
+    }
+
+    // Initialize stats per centre
+    const centreStats = centres.map(centre => ({
+      centreId: centre._id,
+      name: centre.name,
+      shortCode: centre.shortCode,
+      totalClients: 0,
+      totalSales: 0
+    }));
+
+    // Get customers for the selected date with centreId populated
+    const customers = await Customer.find({
+      createdAt: { $gte: startOfDay, $lt: endOfDay }
+    }).populate("centreId", "name shortCode");
+
+    // Calculate statistics
+    customers.forEach(customer => {
+      const centre = centreStats.find(c => c.centreId.toString() === customer.centreId._id.toString());
+
+      if (centre) {
+        centre.totalClients += 1;
+
+        const totalCash = (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
+        const totalOnline = (customer.paymentOnline1 || 0) + (customer.paymentOnline2 || 0);
+        const totalCommission = (customer.cashCommission || 0) + (customer.onlineCommission || 0);
+
+        // Assuming payCriteria logic is elsewhere, subtracting commission as before
+        centre.totalSales += (totalCash + totalOnline - totalCommission);
+      }
+    });
+
+    res.status(200).json(centreStats);
+  } catch (error) {
+    console.error("Error fetching centre statistics:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
