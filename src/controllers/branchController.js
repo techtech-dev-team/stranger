@@ -23,7 +23,7 @@ const getCustomersForYearByBranch = async (year, branchId) => {
 const getCustomersForYear = async (year, branchId = null) => {
   const startOfYear = moment().year(year).startOf("year").toDate();
   const endOfYear = moment().year(year).endOf("year").toDate();
-  
+
   const query = { createdAt: { $gte: startOfYear, $lt: endOfYear } };
   if (branchId) query.branchId = new mongoose.Types.ObjectId(branchId);
 
@@ -103,20 +103,22 @@ exports.getCombinedMonthlyClients = async (req, res) => {
 exports.getMonthlySalesByBranch = async (req, res) => {
   try {
     const { branchId: rawBranchId, year } = req.query;
-    const branchId = extractBranchId(rawBranchId);
-
-    if (!branchId) {
-      return res.status(400).json({ message: "Invalid branchId" });
-    }
+    const branchId = rawBranchId ? extractBranchId(rawBranchId) : null; // Allow null branchId
 
     const validYear = parseInt(year) || moment().year();
     if (isNaN(validYear)) {
       return res.status(400).json({ message: "Invalid year" });
     }
 
-    const customers = await getCustomersForYearByBranch(validYear, branchId);
-    const monthlySales = initializeMonthlyData();
+    let customers;
+    if (branchId) {
+      customers = await getCustomersForYearByBranch(validYear, branchId);
+    } else {
+      customers = await getCustomersForYear(validYear); // Corrected function call
+    }
 
+
+    const monthlySales = initializeMonthlyData();
     customers.forEach((customer) => {
       const monthIndex = moment(customer.createdAt).month();
       const totalCash = (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
@@ -127,10 +129,11 @@ exports.getMonthlySalesByBranch = async (req, res) => {
 
     res.status(200).json(monthlySales);
   } catch (error) {
-    console.error("Error fetching monthly sales by branch:", error);
+    console.error("Error fetching monthly sales:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // API: Monthly Clients by Branch
 exports.getMonthlyClientsByBranch = async (req, res) => {

@@ -6,9 +6,10 @@ router.get("/statistics/data", getRegionStatistics);
 router.get("/monthly-sales", getMonthlySales);
 router.get("/monthly-clients", getMonthlyClients);
 router.get("/", getAllRegions);
-router.post("/add", addRegion); // Add region
+router.post("/add", addRegion);
 router.get("/:id", getRegionById);
-router.put("/edit/:id", editRegion); // Edit region
-router.delete("/delete/:id", deleteRegion); // Delete region
+router.put("/edit/:id", editRegion);
+router.delete("/delete/:id", deleteRegion);
 
 module.exports = router;
+ 
