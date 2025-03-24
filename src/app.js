@@ -21,6 +21,7 @@ const userRoutes = require("./routes/userRoutes"); // ✅ Added user routes
 const regionBranchCentre = require("./routes/regionBranchCentreRoutes"); // ✅ Added regionBranchCentre routes
 const notificationRoutes = require('./routes/notificationRoutes');
 
+const { refreshData } = require("./controllers/refreshController");
 const { checkMissedEntries } = require('./controllers/notificationController');
 
 // Run every minute to check missed entries and log them
@@ -45,12 +46,13 @@ app.use(cors({
 }));
 app.use(express.json()); // Middleware to parse JSON data
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded data
-
+app.use(refreshData);
 app.use("/api/users", userRoutes);
 app.use("/game", gameRoutes);
 
 // Routes (Protected)
 app.use(protect);
+// Refresh data before any API route is hit
 app.use("/api/admin", adminRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/service", serviceRoutes);
