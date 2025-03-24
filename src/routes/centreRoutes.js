@@ -1,12 +1,13 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const { getAllCentres, getCentreById, getInactiveCentres, getActiveCentres  , getCombinedMonthlySalesByCentre , getMonthlySalesByCentre , getCombinedMonthlyClientsByCentre , getMonthlyClientsByCentre } = require("../controllers/centreController");
+const { getAllCentres, getCentreById, getInactiveCentres, getActiveCentres  , getCombinedMonthlySalesByCentre , getMonthlySalesByCentre , getCombinedMonthlyClientsByCentre , getMonthlyClientsByCentre , getCentreStatistics  } = require("../controllers/centreController");
 const Centre = require("../models/Centre");
 const Customer = require("../models/Customer");
 const Expense = require("../models/Expense");
 
 const router = express.Router();
 
+router.get("/centre-stats", getCentreStatistics);
 router.get("/monthly-sales", getMonthlySalesByCentre);
 router.get("/combined-sales", getCombinedMonthlySalesByCentre);
 router.get("/monthly-clients", getMonthlyClientsByCentre);
@@ -34,11 +35,8 @@ router.post('/', async (req, res) => {
         res.status(500).json({ message: "Error adding centre", error: error.message });
     }
 });
-
 router.get("/:id", getCentreById);
-
 router.get("/inactive/list", getInactiveCentres);
-
 router.get("/active/list", getActiveCentres);
 router.get("/report/:centerId", async (req, res) => {
     try {
@@ -150,7 +148,6 @@ router.get("/report/:centerId", async (req, res) => {
         res.status(500).json({ success: false, message: "Server error" });
     }
 });
-
 router.put('/:centreId', async (req, res) => {
     const { centreId } = req.params;
     const { name, shortCode, CentreID, payCriteria, regionId, branchId } = req.body;

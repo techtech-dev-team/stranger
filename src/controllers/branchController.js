@@ -2,6 +2,8 @@ const Branch = require("../models/Branch");
 const Customer = require("../models/Customer");
 const moment = require("moment");
 const mongoose = require("mongoose");
+const Region = require("../models/Region");
+
 
 // Helpers
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -225,9 +227,6 @@ exports.createBranch = async (req, res) => {
   }
 };
 
-// @desc   Update a branch by ID
-// @route  PUT /api/branches/:id
-// @access Private
 exports.updateBranch = async (req, res) => {
   const { name, shortCode, regionId } = req.body;
 
@@ -258,9 +257,6 @@ exports.updateBranch = async (req, res) => {
   }
 };
 
-// @desc   Delete a branch by ID
-// @route  DELETE /api/branches/:id
-// @access Private
 exports.deleteBranch = async (req, res) => {
   try {
     // Find the branch by ID and delete it
@@ -274,3 +270,57 @@ exports.deleteBranch = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+exports.getBranchStatistics = async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date || !moment(date, "YYYY-MM-DD", true).isValid()) {
+      return res.status(400).json({ message: "Invalid or missing date parameter" });
+    }
+
+    const startOfDay = moment(date).startOf("day").toDate();
+    const endOfDay = moment(date).endOf("day").toDate();
+
+    // Fetch all branches
+    const branches = await Branch.find({});
+    if (!branches.length) {
+      return res.status(404).json({ message: "No branches found" });
+    }
+
+    // Initialize stats per branch
+    const branchStats = branches.map(branch => ({
+      branchId: branch._id,
+      name: branch.name,
+      shortCode: branch.shortCode,
+      totalClients: 0,
+      totalSales: 0
+    }));
+
+    // Get customers for the selected date with branchId populated
+    const customers = await Customer.find({
+      createdAt: { $gte: startOfDay, $lt: endOfDay }
+    }).populate("branchId", "name shortCode");
+
+    // Calculate statistics
+    customers.forEach(customer => {
+      const branch = branchStats.find(b => b.branchId.toString() === customer.branchId._id.toString());
+
+      if (branch) {
+        branch.totalClients += 1;
+
+        const totalCash = (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
+        const totalOnline = (customer.paymentOnline1 || 0) + (customer.paymentOnline2 || 0);
+        const totalCommission = (customer.cashCommission || 0) + (customer.onlineCommission || 0);
+
+        // Assuming payCriteria logic is elsewhere, subtracting commission as before
+        branch.totalSales += (totalCash + totalOnline - totalCommission);
+      }
+    });
+
+    res.status(200).json(branchStats);
+  } catch (error) {
+    console.error("Error fetching branch statistics:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+

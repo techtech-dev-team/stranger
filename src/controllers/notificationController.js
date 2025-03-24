@@ -7,14 +7,14 @@ const moment = require('moment-timezone');
 
 const checkMissedEntries = async (req, res) => {
   try {
-    const fifteenMinutesAgo = moment().subtract(15, 'minutes').toDate();
+    const fifteenMinutesAgo = moment().subtract(1, 'minutes').toDate();
     const unverifiedCustomers = await Customer.find({
       createdAt: { $gte: fifteenMinutesAgo },
     });
 
     for (const customer of unverifiedCustomers) {
       const visionEntry = await Vision.findOne({
-        time: { $gte: moment(customer.inTime).subtract(15, 'minutes').toISOString(), $lte: moment(customer.inTime).add(15, 'minutes').toISOString() },
+        time: { $gte: moment(customer.inTime).subtract(1, 'minutes').toISOString(), $lte: moment(customer.inTime).add(1, 'minutes').toISOString() },
         nameOrCode: customer.number,
       });
 
