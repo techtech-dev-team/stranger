@@ -41,21 +41,31 @@ const extractBranchId = (rawBranchId) => {
 
 exports.getCombinedMonthlySales = async (req, res) => {
   try {
-    const { year } = req.query;
+    const { year, branchId } = req.query;
 
-    // Validate year, default to current year
+    if (!branchId) {
+      return res.status(400).json({ message: "Branch ID is required" });
+    }
+
+    // Validate branchId format (should be a MongoDB ObjectId)
+    if (!mongoose.Types.ObjectId.isValid(branchId)) {
+      return res.status(400).json({ message: "Invalid branchId format" });
+    }
+
     const validYear = parseInt(year) || moment().year();
     if (isNaN(validYear)) {
       return res.status(400).json({ message: "Invalid year" });
     }
 
-    // Fetch customers for the year (across all branches)
-    const customers = await getCustomersForYear(validYear);
+    // Check if the branch exists
+    const branchExists = await Branch.findById(branchId);
+    if (!branchExists) {
+      return res.status(400).json({ message: "Branch not found" });
+    }
 
-    // Initialize combined sales data
+    const customers = await getCustomersForYear(validYear, branchId);
+
     const monthlySales = initializeMonthlyData();
-
-    // Calculate total sales for each month
     customers.forEach((customer) => {
       const monthIndex = moment(customer.createdAt).month();
       const totalCash = (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
@@ -66,24 +76,37 @@ exports.getCombinedMonthlySales = async (req, res) => {
 
     res.status(200).json(monthlySales);
   } catch (error) {
-    console.error("Error fetching combined monthly sales:", error);
+    console.error("Error fetching branch-wise monthly sales:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// 📌 Get Combined Monthly Clients for All Branches
 exports.getCombinedMonthlyClients = async (req, res) => {
   try {
-    const { year } = req.query;
+    const { year, branchId } = req.query;
 
-    // Validate year, default to current year
+    if (!branchId) {
+      return res.status(400).json({ message: "Branch ID is required" });
+    }
+
+    // Validate branchId format (should be a MongoDB ObjectId)
+    if (!mongoose.Types.ObjectId.isValid(branchId)) {
+      return res.status(400).json({ message: "Invalid branchId format" });
+    }
+
     const validYear = parseInt(year) || moment().year();
     if (isNaN(validYear)) {
       return res.status(400).json({ message: "Invalid year" });
     }
 
-    // Fetch customers for the year (across all branches)
-    const customers = await getCustomersForYear(validYear);
+    // Check if the branch exists
+    const branchExists = await Branch.findById(branchId);
+    if (!branchExists) {
+      return res.status(400).json({ message: "Branch not found" });
+    }
+
+    // Fetch customers for the year and specific branch
+    const customers = await getCustomersForYear(validYear, branchId);
 
     // Initialize combined clients data
     const monthlyClients = initializeMonthlyData();
@@ -96,7 +119,7 @@ exports.getCombinedMonthlyClients = async (req, res) => {
 
     res.status(200).json(monthlyClients);
   } catch (error) {
-    console.error("Error fetching combined monthly clients:", error);
+    console.error("Error fetching branch-wise monthly clients:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
