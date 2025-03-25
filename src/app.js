@@ -39,11 +39,16 @@ connectDB();
 
 // Middleware
 app.use(cors({
-    origin: "*", // Allows requests from any origin
-    credentials: true, // Allows cookies, authorization headers, etc.
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed methods
-    allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
+    origin: function (origin, callback) {
+        callback(null, origin || "*"); // Allow requests from all origins
+    },
+    credentials: true, // Allow cookies/auth headers
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
 }));
+
+app.options("*", cors());
+
 app.use(express.json()); // Middleware to parse JSON data
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded data
 app.use(refreshData);

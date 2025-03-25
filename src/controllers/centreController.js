@@ -3,19 +3,11 @@ const Customer = require("../models/Customer");
 const mongoose = require("mongoose");
 const moment = require("moment");
 
-// ===== Helpers =====
-
-// Validate ObjectId
+const initializeMonthlyData = () => {
+  return moment.months().map(month => ({ month, value: 0 }));
+};
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
-// Initialize Monthly Data
-const initializeMonthlyData = () =>
-  Array.from({ length: 12 }, (_, i) => ({
-    month: moment().month(i).format("MMMM"),
-    value: 0,
-  }));
-
-// Fetch Customers for Year (All Centres or Specific Centre)
 const getCustomersForYearByCentre = async (year, centreId = null) => {
   const startOfYear = moment().year(year).startOf("year").toDate();
   const endOfYear = moment().year(year).endOf("year").toDate();
@@ -26,43 +18,92 @@ const getCustomersForYearByCentre = async (year, centreId = null) => {
   return Customer.find(query);
 };
 
-// Extract and validate centreId
 const extractCentreId = (rawCentreId) => {
   if (!rawCentreId) return null;
   const centreId = rawCentreId.$oid ? rawCentreId.$oid : rawCentreId;
   return isValidObjectId(centreId) ? centreId : null;
 };
 
-// ===== APIs =====
-
-// 📌 Get Combined Monthly Sales for All Centres
 exports.getCombinedMonthlySalesByCentre = async (req, res) => {
   try {
     const { year } = req.query;
+    const { centerId } = req.query; // Instead of req.params
+
+    if (!centerId) {
+      return res.status(400).json({ message: "Center ID is required" });
+    }
+
     const validYear = parseInt(year) || moment().year();
-    if (isNaN(validYear)) {
+    if (isNaN(validYear) || validYear < 2000 || validYear > moment().year()) {
       return res.status(400).json({ message: "Invalid year" });
     }
 
-    const customers = await getCustomersForYearByCentre(validYear);
-    const monthlySales = initializeMonthlyData();
+    const customers = await getCustomersForYearByCentre(validYear, centerId);
+    if (!customers.length) {
+      return res.status(200).json(initializeMonthlyData()); // Return 0s for all months
+    }
+    
+
+    const monthlySales = initializeMonthlyData(); // Initialize with all months
 
     customers.forEach((customer) => {
-      const monthIndex = moment(customer.createdAt).month();
+      const month = moment(customer.createdAt).format("MMMM");
       const totalCash = (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
       const totalOnline = (customer.paymentOnline1 || 0) + (customer.paymentOnline2 || 0);
       const totalCommission = (customer.cashCommission || 0) + (customer.onlineCommission || 0);
-      monthlySales[monthIndex].value += totalCash + totalOnline - totalCommission;
+      const saleAmount = totalCash + totalOnline - totalCommission;
+
+      const monthEntry = monthlySales.find(entry => entry.month === month);
+      if (monthEntry) {
+        monthEntry.value += saleAmount;
+      }
     });
 
-    res.status(200).json(monthlySales);
+    res.status(200).json(monthlySales); // Always return full dataset
+
   } catch (error) {
     console.error("Error fetching combined monthly sales by centre:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// 📌 Get Monthly Sales for a Specific Centre
+exports.getCombinedMonthlyClientsByCentre = async (req, res) => {
+  try {
+    const { year } = req.query;
+    const { centerId } = req.query; // Instead of req.params
+
+    if (!centerId) {
+      return res.status(400).json({ message: "Center ID is required" });
+    }
+
+    const validYear = parseInt(year) || moment().year();
+    if (isNaN(validYear) || validYear < 2000 || validYear > moment().year()) {
+      return res.status(400).json({ message: "Invalid year" });
+    }
+
+    const customers = await getCustomersForYearByCentre(validYear, centerId);
+    if (!customers.length) {
+      return res.status(200).json(initializeMonthlyData()); // Return 0s for all months
+    }
+    
+
+    const monthlyClients = initializeMonthlyData();
+
+    customers.forEach((customer) => {
+      const month = moment(customer.createdAt).format("MMMM");
+      const monthEntry = monthlyClients.find(entry => entry.month === month);
+      if (monthEntry) {
+        monthEntry.value += 1;
+      }
+    });
+
+    res.status(200).json(monthlyClients);
+  } catch (error) {
+    console.error("Error fetching combined monthly clients by centre:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 exports.getMonthlySalesByCentre = async (req, res) => {
   try {
     const { centreId: rawCentreId, year } = req.query;
@@ -94,31 +135,6 @@ exports.getMonthlySalesByCentre = async (req, res) => {
   }
 };
 
-// 📌 Get Combined Monthly Clients for All Centres
-exports.getCombinedMonthlyClientsByCentre = async (req, res) => {
-  try {
-    const { year } = req.query;
-    const validYear = parseInt(year) || moment().year();
-    if (isNaN(validYear)) {
-      return res.status(400).json({ message: "Invalid year" });
-    }
-
-    const customers = await getCustomersForYearByCentre(validYear);
-    const monthlyClients = initializeMonthlyData();
-
-    customers.forEach((customer) => {
-      const monthIndex = moment(customer.createdAt).month();
-      monthlyClients[monthIndex].value += 1;
-    });
-
-    res.status(200).json(monthlyClients);
-  } catch (error) {
-    console.error("Error fetching combined monthly clients by centre:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-// 📌 Get Monthly Clients for a Specific Centre
 exports.getMonthlyClientsByCentre = async (req, res) => {
   try {
     const { centreId: rawCentreId, year } = req.query;
