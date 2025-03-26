@@ -4,6 +4,7 @@ const { getAllCentres, getCentreById, getInactiveCentres, getActiveCentres  , ge
 const Centre = require("../models/Centre");
 const Customer = require("../models/Customer");
 const Expense = require("../models/Expense");
+const moment = require("moment");
 
 const router = express.Router();
 
@@ -189,6 +190,53 @@ router.delete("/:centreId", async (req, res) => {
         res.json({ message: "Centre deleted successfully" });
     } catch (error) {
         res.status(400).send("Error deleting centre");
+    }
+});
+router.get("/previous-three-days-sales/:centerId", async (req, res) => {
+    try {
+        const { centerId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(centerId)) {
+            return res.status(400).json({ success: false, message: "Invalid center ID" });
+        }
+
+        const centerObjectId = new mongoose.Types.ObjectId(centerId);
+
+        // Calculate the start and end date for the previous three days
+        const today = moment().startOf("day");
+        const threeDaysAgo = moment().subtract(3, "days").startOf("day");
+
+        // Fetch sales data for the previous three days
+        const salesData = await Customer.aggregate([
+            {
+                $match: {
+                    centreId: centerObjectId,
+                    createdAt: { $gte: threeDaysAgo.toDate(), $lt: today.toDate() }
+                }
+            },
+            {
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                    totalCustomers: { $sum: 1 },
+                    totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+                    totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+                    totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } },
+                    grandTotal: { 
+                        $sum: { $add: ["$paymentCash1", "$paymentCash2", "$paymentOnline1", "$paymentOnline2"] } 
+                    }
+                }
+            },
+            { $sort: { _id: 1 } } // Sort by date ascending
+        ]);
+
+        res.status(200).json({
+            success: true,
+            centerId,
+            salesData
+        });
+    } catch (error) {
+        console.error(`Error fetching previous three days' sales for Center ID ${req.params.centerId}:`, error);
+        res.status(500).json({ success: false, message: "Server error" });
     }
 });
 
