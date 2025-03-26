@@ -1,6 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const { getAllCentres, getCentreById, getInactiveCentres, getActiveCentres  , getCombinedMonthlySalesByCentre , getMonthlySalesByCentre , getCombinedMonthlyClientsByCentre , getMonthlyClientsByCentre , getCentreStatistics  } = require("../controllers/centreController");
+const { getAllCentres, getCentreById, getInactiveCentres, getActiveCentres, getCombinedMonthlySalesByCentre, getMonthlySalesByCentre, getCombinedMonthlyClientsByCentre, getMonthlyClientsByCentre, getCentreStatistics } = require("../controllers/centreController");
 const Centre = require("../models/Centre");
 const Customer = require("../models/Customer");
 const Expense = require("../models/Expense");
@@ -15,7 +15,7 @@ router.get("/monthly-clients", getMonthlyClientsByCentre);
 router.get("/combined-clients", getCombinedMonthlyClientsByCentre);
 router.get("/", getAllCentres);
 router.post('/', async (req, res) => {
-    const { name, shortCode, centreId,branchName, payCriteria, regionId, branchId, status } = req.body;
+    const { name, shortCode, centreId, branchName, payCriteria, regionId, branchId, status } = req.body;
 
     try {
         const newCentre = new Centre({
@@ -196,17 +196,25 @@ router.get("/previous-three-days-sales/:centerId", async (req, res) => {
     try {
         const { centerId } = req.params;
 
+        // Validate centreId
         if (!mongoose.Types.ObjectId.isValid(centerId)) {
             return res.status(400).json({ success: false, message: "Invalid center ID" });
         }
 
         const centerObjectId = new mongoose.Types.ObjectId(centerId);
 
-        // Calculate the start and end date for the previous three days
-        const today = moment().startOf("day");
-        const threeDaysAgo = moment().subtract(3, "days").startOf("day");
+        // Fetch payCriteria to handle "plus" and "minus" logic
+        const centre = await Centre.findById(centerObjectId);
+        if (!centre) {
+            return res.status(404).json({ success: false, message: "Centre not found" });
+        }
 
-        // Fetch sales data for the previous three days
+        // Calculate date range: past 3 days
+        const today = moment().endOf("day");  // Include today till the end
+        const threeDaysAgo = moment().subtract(2, "days").startOf("day");  // Past 2 days + today
+
+
+        // Aggregation to get sales data for the last 3 days
         const salesData = await Customer.aggregate([
             {
                 $match: {
@@ -221,8 +229,26 @@ router.get("/previous-three-days-sales/:centerId", async (req, res) => {
                     totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
                     totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
                     totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } },
-                    grandTotal: { 
-                        $sum: { $add: ["$paymentCash1", "$paymentCash2", "$paymentOnline1", "$paymentOnline2"] } 
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    totalCustomers: 1,
+                    totalCash: 1,
+                    totalOnline: 1,
+                    totalCommission: 1,
+                    grandTotal: {
+                        $cond: {
+                            if: { $eq: [centre.payCriteria, "plus"] },
+                            then: {
+                                $subtract: [
+                                    { $add: ["$totalCash", "$totalOnline"] },
+                                    "$totalCommission"
+                                ]
+                            },
+                            else: { $add: ["$totalCash", "$totalOnline"] }
+                        }
                     }
                 }
             },
@@ -234,10 +260,12 @@ router.get("/previous-three-days-sales/:centerId", async (req, res) => {
             centerId,
             salesData
         });
+
     } catch (error) {
         console.error(`Error fetching previous three days' sales for Center ID ${req.params.centerId}:`, error);
         res.status(500).json({ success: false, message: "Server error" });
     }
 });
+
 
 module.exports = router;
