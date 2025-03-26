@@ -1,4 +1,8 @@
-const Vision = require('../models/Vision');
+const Vision = require("../models/Vision");
+const Customer = require("../models/Customer");
+const User = require("../models/User");
+const Centre = require("../models/Centre");
+const mongoose = require("mongoose");
 
 // ✅ Add a new entry with employee ID from token
 const moment = require('moment-timezone'); // Install: npm install moment-timezone
@@ -38,7 +42,6 @@ exports.addEntry = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 // ✅ Get all entries
 exports.getAllEntries = async (req, res) => {
@@ -97,3 +100,70 @@ exports.deleteEntry = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+// Vision Report API
+exports.getVisionReport = async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    // Date filter (optional)
+    let dateFilter = {};
+    if (date) {
+      const formattedDate = moment(date).startOf("day").toISOString();
+      const nextDay = moment(date).add(1, "day").startOf("day").toISOString();
+      dateFilter = { createdAt: { $gte: formattedDate, $lt: nextDay } };
+    }
+
+    // Fetch all vision staff
+    const users = await User.find({ role: "Vision" }).select("_id name centreIds");
+
+    // Fetch all centres to get centre codes
+    const centres = await Centre.find().select("_id centreId");
+    const centreMap = centres.reduce((acc, centre) => {
+      acc[centre._id.toString()] = centre.centreId.split("_")[0]; // Extract first 3 digits
+      return acc;
+    }, {});
+
+    // Fetch all vision and customer entries (filtered if date is provided)
+    const visionEntries = await Vision.find(dateFilter);
+    const customerEntries = await Customer.find(dateFilter);
+
+    // Generate report
+    const report = users.map(user => {
+      // Get Camera Access (First three digits of centreIds)
+      const cameraAccess = (user.centreIds || []).map(id => centreMap[id] || "N/A").join(", ");
+
+      let matchedEntries = 0;
+      let missedEntries = customerEntries.length;
+
+      visionEntries.forEach(vision => {
+        const visionTime = new Date(vision.time);
+        const matched = customerEntries.some(customer => {
+          const customerTime = new Date(customer.inTime);
+          const timeDifference = Math.abs(visionTime - customerTime) / (1000 * 60);
+          return timeDifference <= 15;
+        });
+
+        if (matched) matchedEntries += 1;
+      });
+
+      // Calculate Missed Entries
+      missedEntries -= matchedEntries;
+
+      return {
+        userId: user._id,
+        name: user.name,
+        cameraAccess,
+        matchedEntries,
+        missedEntries
+      };
+    });
+
+    res.status(200).json({ success: true, data: report });
+
+  } catch (error) {
+    console.error("Error fetching vision report:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
