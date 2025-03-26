@@ -7,7 +7,16 @@ const Centre = require('../models/Centre');
 
 const addCustomer = async (req, res) => {
   try {
-    const { name, number, service, duration, inTime, paymentCash1, paymentOnline1, staffAttending, paymentCash2, paymentOnline2, cashCommission, onlineCommission, outTime, branchId, centreId, regionId } = req.body;
+    const { 
+      name, number, service, duration, inTime, paymentCash1, 
+      paymentOnline1, staffAttending, paymentCash2, paymentOnline2, 
+      cashCommission, onlineCommission, outTime, branchId, centreId, regionId 
+    } = req.body;
+
+    // Ensure user is authenticated
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
 
     // Check if service exists
     const serviceExists = await Service.findById(service);
@@ -17,15 +26,14 @@ const addCustomer = async (req, res) => {
     const userExists = await User.findById(staffAttending);
     if (!userExists) return res.status(400).json({ message: 'Invalid user ID' });
 
-    // Convert inTime and outTime to IST
+    // Convert UTC time to IST
     const convertToIST = (utcTime) => {
       if (!utcTime) return null;
-      const date = new Date(utcTime);
-      return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+      return new Date(new Date(utcTime).getTime() + 5.5 * 60 * 60 * 1000);
     };
 
     // Calculate total cash
-    const totalCash = Number(paymentCash1)
+    const totalCash = Number(paymentCash1 || 0) + Number(paymentCash2 || 0);
 
     // Update Centre balance
     const centre = await Centre.findById(centreId);
@@ -34,12 +42,13 @@ const addCustomer = async (req, res) => {
     centre.balance += totalCash;
     await centre.save();
 
+    // Create new customer
     const newCustomer = new Customer({
       name,
       number,
       service,
       duration,
-      inTime: convertToIST(inTime),
+      inTime: inTime,
       paymentCash1,
       paymentOnline1,
       staffAttending,
@@ -48,7 +57,7 @@ const addCustomer = async (req, res) => {
       cashCommission,
       onlineCommission,
       outTime: convertToIST(outTime),
-      createdBy: req.user._id, // Centre Manager who added this customer
+      createdBy: req.user._id,
       branchId,
       centreId,
       regionId
@@ -58,7 +67,8 @@ const addCustomer = async (req, res) => {
     res.status(201).json({ message: 'Customer added successfully', customer: newCustomer });
 
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Error adding customer:', error);
+    res.status(500).json({ message: 'An error occurred while adding the customer', error: error.message });
   }
 };
 
