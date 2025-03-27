@@ -3,6 +3,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
+const cookieParser = require("cookie-parser");
 
 // Import Routes
 const adminRoutes = require("./routes/adminRoutes");
@@ -20,11 +21,10 @@ const gameRoutes = require("./routes/gameRoutes");
 const userRoutes = require("./routes/userRoutes"); // ✅ Added user routes
 const regionBranchCentre = require("./routes/regionBranchCentreRoutes"); // ✅ Added regionBranchCentre routes
 const notificationRoutes = require('./routes/notificationRoutes');
-
+const sseRoutes = require("./routes/sseRoutes");
 const { refreshData } = require("./controllers/refreshController");
 const { checkMissedEntries } = require('./controllers/notificationController');
 
-// Run every minute to check missed entries and log them
 setInterval(checkMissedEntries, 60 * 1000);
 console.log('Missed entry checker started...');
 
@@ -34,10 +34,8 @@ const { protect } = require("./middleware/authMiddleware"); // Import auth middl
 dotenv.config();
 const app = express();
 
-// Connect to Database
 connectDB();
 
-// Middleware
 app.use(cors({
     origin: function (origin, callback) {
         callback(null, origin || "*"); // Allow requests from all origins
@@ -46,24 +44,26 @@ app.use(cors({
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
 }));
-
+app.use(cookieParser()); // Add this in your `server.js`
 app.options("*", cors());
 
 app.use(express.json()); // Middleware to parse JSON data
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded data
 app.use(refreshData);
+
+app.use("/api/sse", sseRoutes);
 app.use("/api/users", userRoutes);
 app.use("/game", gameRoutes);
+app.use("/api/vision", visionRoutes);
+app.use("/api/customer", customerRoutes);
 
 // Routes (Protected)
 app.use(protect);
 // Refresh data before any API route is hit
 app.use("/api/admin", adminRoutes);
-app.use("/api/customer", customerRoutes);
 app.use("/api/service", serviceRoutes);
 app.use("/api/expense", expenseRoutes);
 app.use("/api/reports", reportRoutes);
-app.use("/api/vision", visionRoutes);
 app.use("/api/visionid", visionIdRoutes);
 app.use("/api/regions", regionRoutes);
 app.use("/api/branches", branchRoutes);

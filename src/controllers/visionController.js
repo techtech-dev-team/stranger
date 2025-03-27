@@ -7,6 +7,29 @@ const mongoose = require("mongoose");
 // ✅ Add a new entry with employee ID from token
 const moment = require('moment-timezone'); // Install: npm install moment-timezone
 
+const sseClients = [];
+
+exports.sseHandler = (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    
+    res.write(`data: ${JSON.stringify({ message: "Connected to SSE" })}\n\n`); // ✅ Proper JSON
+
+    sseClients.push(res);
+
+    req.on("close", () => {
+        const index = sseClients.indexOf(res);
+        if (index !== -1) sseClients.splice(index, 1);
+    });
+};
+
+const sendSSEUpdate = (data) => {
+    sseClients.forEach(client => {
+        client.write(`data: ${JSON.stringify(data)}\n\n`);
+    });
+};
+
 exports.addEntry = async (req, res) => {
   try {
     const { time, nameOrCode, numberOfPeople, status, remark, staffId } = req.body;
@@ -36,6 +59,9 @@ exports.addEntry = async (req, res) => {
     });
 
     await entry.save();
+
+    sendSSEUpdate({ message: "New entry added", entry });
+
     res.status(201).json({ message: "Entry added successfully", entry });
   } catch (error) {
     console.error("Server error:", error);

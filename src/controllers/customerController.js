@@ -4,6 +4,10 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const Centre = require('../models/Centre');
 
+const clients = []; // Store SSE clients
+
+// Function to send SSE events
+
 
 const addCustomer = async (req, res) => {
   try {
@@ -64,12 +68,42 @@ const addCustomer = async (req, res) => {
     });
 
     await newCustomer.save();
+    
+    // Fetch the customer with populated references
+    const populatedCustomer = await Customer.findById(newCustomer._id)
+      .populate('service')
+      .populate('staffAttending')
+      .populate('branchId')
+      .populate('centreId')
+      .populate('regionId')
+      .exec();
+
+    sendSSEEvent({ message: "New customer added", customer: populatedCustomer });
+
     res.status(201).json({ message: 'Customer added successfully', customer: newCustomer });
 
   } catch (error) {
     console.error('Error adding customer:', error);
     res.status(500).json({ message: 'An error occurred while adding the customer', error: error.message });
   }
+};
+const sendSSEEvent = (data) => {
+  clients.forEach((client) => {
+    client.res.write(`data: ${JSON.stringify(data)}\n\n`);
+  });
+};
+
+const sseHandler = (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  clients.push({ res });
+
+  req.on('close', () => {
+    clients.splice(clients.indexOf(res), 1);
+  });
 };
 
 const getCustomers = async (req, res) => {
@@ -254,4 +288,4 @@ const editCustomer = async (req, res) => {
   }
 };
 
-module.exports = { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer };
+module.exports = { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler  };

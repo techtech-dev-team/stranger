@@ -1,8 +1,10 @@
 const express = require('express');
-const { addEntry, getAllEntries, getEntryById, updateEntry, deleteEntry , getVisionReport  } = require('../controllers/visionController');
+const { addEntry, getAllEntries, getEntryById, updateEntry, deleteEntry , getVisionReport, sseHandler  } = require('../controllers/visionController');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
+
+router.get('/sse', sseHandler);
 
 router.get("/report", protect, getVisionReport);
 
