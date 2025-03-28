@@ -1,7 +1,13 @@
-const app = require('./src/app');
+require("dotenv").config(); // Load environment variables
+
+const http = require("http");
+const app = require("./src/app"); // Import the app from src/app.js
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+// Create an HTTP server and listen on the specified port
+const server = http.createServer(app);
+
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
