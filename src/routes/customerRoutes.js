@@ -1,6 +1,6 @@
 const express = require('express');
 const { protect } = require('../middleware/authMiddleware'); // Removed `authorize`
-const { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer,sseHandler   } = require('../controllers/customerController');
+const { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer,sseHandler, getCentreSalesReportDaily   } = require('../controllers/customerController');
 
 const router = express.Router();
 
@@ -13,7 +13,8 @@ router.get('/list', protect, getCustomers);
 
 router.get('/centre-sales-report', protect, getCentreSalesReport);
 
-// Get customer by ID
+router.get('/centre-sales-report-daily', protect, getCentreSalesReportDaily);
+ 
 router.get('/:id', protect, getCustomerById);
 
 // Edit customer by ID

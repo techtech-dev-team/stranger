@@ -42,6 +42,7 @@ router.get("/active/list", getActiveCentres);
 router.get("/report/:centerId", async (req, res) => {
     try {
         const { centerId } = req.params;
+        const { selectedDate } = req.query; // Get selected date
 
         // Check if centerId is a valid ObjectId
         if (!mongoose.Types.ObjectId.isValid(centerId)) {
@@ -51,17 +52,27 @@ router.get("/report/:centerId", async (req, res) => {
         const centerObjectId = new mongoose.Types.ObjectId(centerId);
 
         // Fetch center data and populate necessary fields
-        const center = await Centre.findById(centerObjectId)
-            .populate("") // Assuming there's a related address document
-            .lean();
+        const center = await Centre.findById(centerObjectId).lean();
 
         if (!center) {
             return res.status(404).json({ success: false, message: "Center not found" });
         }
 
+        // Construct date filter
+        const matchCondition = { centreId: centerObjectId };
+        if (selectedDate) {
+            const dateStart = new Date(selectedDate);
+            dateStart.setHours(0, 0, 0, 0);
+
+            const dateEnd = new Date(selectedDate);
+            dateEnd.setHours(23, 59, 59, 999);
+
+            matchCondition.createdAt = { $gte: dateStart, $lte: dateEnd };
+        }
+
         // Get sales data for the center using aggregation
         const salesReport = await Customer.aggregate([
-            { $match: { centreId: centerObjectId } },
+            { $match: matchCondition },
             {
                 $group: {
                     _id: null,
@@ -114,15 +125,26 @@ router.get("/report/:centerId", async (req, res) => {
         // Update Centre balance
         await Centre.findByIdAndUpdate(center._id, { previousBalance, balance });
 
-        // Fetch Customers data with populated fields
-        const customers = await Customer.find({ centreId: centerObjectId })
+        // Fetch Customers data with populated fields, applying date filter
+        const customers = await Customer.find(matchCondition)
             .populate("service", "name price")  // Populating service details
             .populate("staffAttending", "name role")  // Populating staff details
             .lean();
 
-        // Fetch Expenses for the center
-        const expenses = await Expense.find({ centreIds: centerObjectId }).lean();
-        const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
+        // Fetch Expenses for the center, applying date filter
+        const expenseMatchCondition = { centreIds: centerObjectId };
+        if (selectedDate) {
+            const dateStart = new Date(selectedDate);
+            dateStart.setHours(0, 0, 0, 0);
+            
+            const dateEnd = new Date(selectedDate);
+            dateEnd.setHours(23, 59, 59, 999);
+            
+            expenseMatchCondition.createdAt = { $gte: dateStart, $lte: dateEnd };
+        }
+        
+        const expenses = await Expense.find(expenseMatchCondition).lean();
+                const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
 
         // Prepare the response data
         res.status(200).json({
@@ -139,9 +161,9 @@ router.get("/report/:centerId", async (req, res) => {
                 onlineComm: salesReport[0]?.totalOnlineCommission || 0,
                 balance,
                 centerDetails: center, // Include the full populated center data
-                customers,             // Include populated customer data
-                expenses,              // Include expenses data
-                salesReport           // Include aggregated sales report
+                customers,             // Include populated customer data with date filter
+                expenses,              // Include expenses data with date filter
+                salesReport            // Include aggregated sales report
             }
         });
     } catch (error) {
@@ -149,6 +171,7 @@ router.get("/report/:centerId", async (req, res) => {
         res.status(500).json({ success: false, message: "Server error" });
     }
 });
+
 router.put('/:centreId', async (req, res) => {
     const { centreId } = req.params;
     const { name, shortCode, CentreID, payCriteria, regionId, branchId } = req.body;
