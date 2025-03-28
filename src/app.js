@@ -25,6 +25,8 @@ const salesRoutes = require("./routes/salesRoutes");
 const sseRoutes = require("./routes/sseRoutes");
 const { refreshData } = require("./controllers/refreshController");
 const { checkMissedEntries } = require('./controllers/notificationController');
+const helmet = require("helmet");
+
 
 setInterval(checkMissedEntries, 60 * 1000);
 console.log('Missed entry checker started...');
@@ -52,6 +54,45 @@ app.use(express.json()); // Middleware to parse JSON data
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded data
 app.use(refreshData);
 
+app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: [
+            "'self'", 
+            "'unsafe-inline'", 
+            "'unsafe-eval'", 
+            "https://www.gstatic.com", 
+            "https://www.google.com"
+          ],
+          frameSrc: ["'self'", "https://www.google.com"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com"],
+          imgSrc: ["'self'", "data:", "https://www.google.com"],
+        },
+      },
+    })
+  );
+
+  app.get("/api/sse", (req, res) => {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+  
+      const sendData = () => {
+          res.write(`data: ${JSON.stringify({ message: "New Data Added" })}\n\n`);
+      };
+  
+      // Send an update every 5 seconds (for testing)
+      const interval = setInterval(sendData, 5000);
+  
+      req.on("close", () => {
+          clearInterval(interval);
+          res.end();
+      });
+  });
+   
 app.use("/api/sse", sseRoutes);
 app.use("/api/users", userRoutes);
 app.use("/game", gameRoutes);
