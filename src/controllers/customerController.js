@@ -37,13 +37,21 @@ const addCustomer = async (req, res) => {
     };
 
     // Calculate total cash
-    const totalCash = Number(paymentCash1 || 0) + Number(paymentCash2 || 0);
+    const totalCash = Number(paymentCash1 || 0) + Number(paymentOnline1 || 0);
 
     // Update Centre balance
     const centre = await Centre.findById(centreId);
     if (!centre) return res.status(404).json({ message: 'Centre not found' });
 
-    centre.balance += totalCash;
+    let balanceUpdate = 0;
+
+    if (centre.payCriteria === "plus") {
+      balanceUpdate = Number(paymentCash1 || 0) + Number(paymentOnline1 || 0);
+    } else if (centre.payCriteria === "minus") {
+      balanceUpdate = Number(paymentCash1 || 0) + Number(paymentOnline1 || 0);    
+    }
+
+    centre.balance += balanceUpdate;
     await centre.save();
 
     // Create new customer
@@ -122,7 +130,7 @@ const getCustomers = async (req, res) => {
   }
 };
 
-const getCentreSalesReport = async (req, res) => {
+const getCentreSalesReport = async (req, res) => { 
   try {
     const { centreId } = req.query;
 
@@ -185,21 +193,13 @@ const getCentreSalesReport = async (req, res) => {
       ]);
 
       // Calculate totals for the center
-      let previousBalance = centre.previousBalance;
-      let balance = previousBalance;
-      if (salesReport.length > 0) {
-        balance += salesReport[0].grandTotal;
-      }
-
-      // Update Centre balance
-      await Centre.findByIdAndUpdate(centre._id, { previousBalance, balance });
+      let balance = centre.previousBalance + centre.balance;
 
       responseData.push({
         centreId: centre._id,
         centreName: centre.name,
         centreCode: centre.centreId,
         payCriteria,
-        previousBalance,
         balance,
         totalCash: salesReport[0]?.totalCash || 0,
         totalOnline: salesReport[0]?.totalOnline || 0,
@@ -293,23 +293,13 @@ const getCentreSalesReportDaily = async (req, res) => {
         }
       ]);
 
-      let previousBalance = centre.previousBalance;
-      let balance = previousBalance;
-      let totalCash = salesReport[0]?.totalCash || 0;
-      let totalOnline = salesReport[0]?.totalOnline || 0;
-      let totalSales = salesReport[0]?.grandTotal || 0;
-      let totalCustomers = salesReport[0]?.totalCustomers || 0;
-
-      balance += totalSales;
-
-      await Centre.findByIdAndUpdate(centre._id, { previousBalance, balance });
+      let balance = centre.previousBalance + centre.balance;
 
       responseData.push({
         centreId: centre._id,
         centreName: centre.name,
         centreCode: centre.centreId,
         payCriteria,
-        previousBalance,
         balance,
         totalCash,
         totalOnline,
@@ -328,7 +318,6 @@ const getCentreSalesReportDaily = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
 
 const getCustomerById = async (req, res) => {
   try {
@@ -380,14 +369,16 @@ const editCustomer = async (req, res) => {
     const newPaymentCash2 = Number(updates.paymentCash2) || 0;
     const cashCommissionAmount = Number(updates.cashCommission) || 0; 
 
+    let balanceUpdate = 0;
+
     if (centre.payCriteria === "plus") {
-      console.log(`Applying PLUS logic: Adding ${newPaymentCash2} - ${cashCommissionAmount}`);
-      centre.balance += newPaymentCash2 - cashCommissionAmount;
-    } else {
-      console.log(`Applying DEFAULT logic: Adding ${newPaymentCash2}`);
-      centre.balance += newPaymentCash2;
+      balanceUpdate = Number(updates.paymentCash2 || 0) + Number(updates.paymentOnline2 || 0) - 
+                      Number(updates.cashCommission || 0) - Number(updates.onlineCommission || 0);
+    } else if (centre.payCriteria === "minus") {
+      balanceUpdate = Number(updates.paymentOnline2 || 0) + Number(updates.paymentCash2 || 0) 
     }
 
+    centre.balance += balanceUpdate;
     await centre.save();
 
     const updatedCustomer = await Customer.findByIdAndUpdate(id, updates, { new: true });

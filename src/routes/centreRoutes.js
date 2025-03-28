@@ -116,22 +116,13 @@ router.get("/report/:centerId", async (req, res) => {
             }
         ]);
 
-        let previousBalance = center.previousBalance || 0;
-        let balance = previousBalance;
-        if (salesReport.length > 0) {
-            balance += salesReport[0].grandTotal;
-        }
+        let balance = center.previousBalance + center.balance || 0;
 
-        // Update Centre balance
-        await Centre.findByIdAndUpdate(center._id, { previousBalance, balance });
-
-        // Fetch Customers data with populated fields, applying date filter
         const customers = await Customer.find(matchCondition)
             .populate("service", "name price")  // Populating service details
             .populate("staffAttending", "name role")  // Populating staff details
             .lean();
 
-        // Fetch Expenses for the center, applying date filter
         const expenseMatchCondition = { centreIds: centerObjectId };
         if (selectedDate) {
             const dateStart = new Date(selectedDate);
@@ -146,7 +137,6 @@ router.get("/report/:centerId", async (req, res) => {
         const expenses = await Expense.find(expenseMatchCondition).lean();
                 const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
 
-        // Prepare the response data
         res.status(200).json({
             success: true,
             data: {
