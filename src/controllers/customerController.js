@@ -3,10 +3,97 @@ const Service = require('../models/Service');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 const Centre = require('../models/Centre');
-
 const clients = []; // Store SSE clients
 
-// Function to send SSE events
+const getSalesGraphData = async (req, res) => {
+  try {
+    const { centreId } = req.query;
+
+    // Validate centre ID if provided
+    if (centreId && !mongoose.isValidObjectId(centreId)) {
+      return res.status(400).json({ message: "Invalid centre ID" });
+    }
+
+    // Create filter condition
+    const centreFilter = centreId ? { centreId: new mongoose.Types.ObjectId(centreId) } : {}; // Remove this filter for all centres
+
+    const today = new Date();
+
+    // *** DAILY DATA (Last 12 Days) ***
+    const dailySales = await Customer.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: new Date(today.setDate(today.getDate() - 11)) } // Last 12 days
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+          totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+          totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } },
+          totalCustomers: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // *** MONTHLY DATA (Current Year - Last 12 Months) ***
+    const monthlySales = await Customer.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: new Date(new Date().getFullYear(), 0, 1) } // From Jan 1st of this year
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } }, // Group by Year-Month
+          totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+          totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+          totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } },
+          totalCustomers: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // *** YEARLY DATA (Last 3 Years including Current Year) ***
+    const yearStart = new Date();
+    yearStart.setFullYear(yearStart.getFullYear() - 2, 0, 1); // Start from 2 years ago
+
+    const yearlySales = await Customer.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: yearStart } // From 2 years ago
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y", date: "$createdAt" } }, // Group by Year
+          totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+          totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+          totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } },
+          totalCustomers: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    res.status(200).json({
+      message: "Sales graph data retrieved successfully",
+      dailySales,
+      monthlySales,
+      yearlySales
+    });
+
+  } catch (error) {
+    console.error("Error fetching sales graph data:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+module.exports = { getSalesGraphData };
+
 
 
 const addCustomer = async (req, res) => {
@@ -390,4 +477,4 @@ const editCustomer = async (req, res) => {
   }
 };
 
-module.exports = { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler , getCentreSalesReportDaily };
+module.exports = { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler , getCentreSalesReportDaily , getSalesGraphData };

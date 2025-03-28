@@ -1,10 +1,11 @@
 const express = require('express');
 const { protect } = require('../middleware/authMiddleware'); // Removed `authorize`
-const { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer,sseHandler, getCentreSalesReportDaily   } = require('../controllers/customerController');
+const { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer,sseHandler, getCentreSalesReportDaily , getSalesGraphData } = require('../controllers/customerController');
 
 const router = express.Router();
 
 router.get("/sse", sseHandler);
+router.get("/sales-graph", getSalesGraphData);
 
 router.post('/add', protect, addCustomer);
 

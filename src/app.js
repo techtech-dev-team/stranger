@@ -21,6 +21,7 @@ const gameRoutes = require("./routes/gameRoutes");
 const userRoutes = require("./routes/userRoutes"); // ✅ Added user routes
 const regionBranchCentre = require("./routes/regionBranchCentreRoutes"); // ✅ Added regionBranchCentre routes
 const notificationRoutes = require('./routes/notificationRoutes');
+const salesRoutes = require("./routes/salesRoutes");
 const sseRoutes = require("./routes/sseRoutes");
 const { refreshData } = require("./controllers/refreshController");
 const { checkMissedEntries } = require('./controllers/notificationController');
@@ -71,6 +72,8 @@ app.use("/api/centres", centreRoutes);
 app.use("/api/cash-collection", cashCollectionRoutes);
 app.use("/api/regions-branches-centres", regionBranchCentre); // ✅ Added regionBranchCentre routes
 app.use('/api/notifications', notificationRoutes);
+app.use("/api/sales", salesRoutes); // Base route for sales-related APIs
+
 
 
 
