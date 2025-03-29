@@ -58,9 +58,6 @@ exports.addExpense = async (req, res) => {
   }
 };
 
-
-
-// Get Expenses List
 exports.getExpenses = async (req, res) => {
   try {
     const expenses = await Expense.find()
