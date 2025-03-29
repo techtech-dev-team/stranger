@@ -2,7 +2,7 @@ const Expense = require('../models/Expense');
 const clients = []; // Store SSE clients
 
 // SSE Handler for Real-Time Expense Updates
-const sseHandler = (req, res) => {
+exports.sseHandler = (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -93,4 +93,3 @@ exports.editExpense = async (req, res) => {
   }
 };
 
-module.exports = { addExpense, getExpenses, getExpenseById, editExpense, sseHandler };
