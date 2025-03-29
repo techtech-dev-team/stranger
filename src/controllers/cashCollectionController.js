@@ -1,6 +1,30 @@
 const CashCollection = require("../models/cashCollection");
 const User = require("../models/User");
 const Centre = require("../models/Centre");
+
+const clients = []; // Store SSE clients
+
+// SSE Handler
+exports.sseHandler = (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  clients.push(res);
+
+  req.on("close", () => {
+    clients.splice(clients.indexOf(res), 1);
+  });
+};
+
+// Function to send SSE events
+const sendSSEEvent = (data) => {
+  clients.forEach((client) => {
+    client.write(`data: ${JSON.stringify(data)}\n\n`);
+  });
+};
+
 // Add a new cash collection entry
 exports.addCashCollection = async (req, res) => {
   try {
@@ -46,6 +70,9 @@ exports.addCashCollection = async (req, res) => {
 
     await newEntry.save();
 
+    // Send SSE event
+    sendSSEEvent({ message: "New cash collection recorded", data: newEntry });
+
     res.status(201).json({
       message: "Cash collection recorded successfully.",
       data: newEntry,
@@ -75,7 +102,6 @@ exports.getCashCollections = async (req, res) => {
     res.status(500).json({ message: "Error retrieving cash collection records.", error: error.message });
   }
 };
-
 
 exports.getCashCollectionHistory = async (req, res) => {
   try {
@@ -108,4 +134,3 @@ exports.getCashCollectionHistory = async (req, res) => {
     });
   }
 };
-
