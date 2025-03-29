@@ -2,6 +2,9 @@ const Centre = require("../models/Centre");
 const Customer = require("../models/Customer");
 const mongoose = require("mongoose");
 const moment = require("moment");
+const Expense = require("../models/Expense");
+let sseClients = []; // Store SSE clients
+
 
 const initializeMonthlyData = () => {
   return moment.months().map(month => ({ month, value: 0 }));
@@ -22,6 +25,18 @@ const extractCentreId = (rawCentreId) => {
   if (!rawCentreId) return null;
   const centreId = rawCentreId.$oid ? rawCentreId.$oid : rawCentreId;
   return isValidObjectId(centreId) ? centreId : null;
+};
+
+exports.sseCentreUpdates = (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  sseClients.push({ req, res });
+
+  req.on("close", () => {
+      sseClients = sseClients.filter(client => client.res !== res);
+  });
 };
 
 exports.getCombinedMonthlySalesByCentre = async (req, res) => {
@@ -165,17 +180,10 @@ exports.getMonthlyClientsByCentre = async (req, res) => {
 
 exports.getAllCentres = async (req, res) => {
   try {
-    const centres = await Centre.find({})
-      .populate("branchId") // Fetch branch name and short code
-      .populate("regionId"); // Fetch region name
-
-    if (!centres.length) {
-      return res.status(404).json({ message: "No centres found" });
-    }
-    res.status(200).json(centres);
+      const centres = await Centre.find().lean();
+      res.json(centres);
   } catch (error) {
-    console.error("Error fetching centres:", error);
-    res.status(500).json({ message: "Server error" });
+      res.status(500).json({ message: "Error fetching centres", error: error.message });
   }
 };
 
@@ -316,5 +324,175 @@ exports.getCentreStatistics = async (req, res) => {
     console.error("Error fetching centre statistics:", error);
     res.status(500).json({ message: "Server error" });
   }
+};
+
+exports.addCentre = async (req, res) => {
+    const { name, shortCode, centreId, branchName, payCriteria, regionId, branchId, status } = req.body;
+
+    try {
+        const newCentre = new Centre({
+            name,
+            shortCode,
+            centreId,
+            branchName,
+            payCriteria,
+            regionId,
+            branchId,
+            status
+        });
+
+        await newCentre.save();
+
+        // Notify SSE clients
+        sseClients.forEach(client => client.res.write(`data: ${JSON.stringify({ event: "new-centre", centre: newCentre })}\n\n`));
+
+        res.status(201).json({ message: "Centre added successfully", centre: newCentre });
+    } catch (error) {
+        res.status(500).json({ message: "Error adding centre", error: error.message });
+    }
+};
+
+exports.getCentreReport = async (req, res) => {
+    try {
+        const { centerId } = req.params;
+        const { selectedDate } = req.query;
+
+        if (!mongoose.Types.ObjectId.isValid(centerId)) {
+            return res.status(400).json({ success: false, message: "Invalid center ID" });
+        }
+
+        const centerObjectId = new mongoose.Types.ObjectId(centerId);
+        const center = await Centre.findById(centerObjectId).lean();
+
+        if (!center) {
+            return res.status(404).json({ success: false, message: "Center not found" });
+        }
+
+        const matchCondition = { centreId: centerObjectId };
+        if (selectedDate) {
+            const dateStart = new Date(selectedDate);
+            dateStart.setHours(0, 0, 0, 0);
+
+            const dateEnd = new Date(selectedDate);
+            dateEnd.setHours(23, 59, 59, 999);
+
+            matchCondition.createdAt = { $gte: dateStart, $lte: dateEnd };
+        }
+
+        const salesReport = await Customer.aggregate([
+            { $match: matchCondition },
+            {
+                $group: {
+                    _id: null,
+                    totalCustomers: { $sum: 1 },
+                    totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+                    totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+                    totalCashCommission: { $sum: "$cashCommission" },
+                    totalOnlineCommission: { $sum: "$onlineCommission" },
+                    totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    totalCustomers: 1,
+                    totalCash: 1,
+                    totalOnline: 1,
+                    totalCashCommission: 1,
+                    totalOnlineCommission: 1,
+                    totalCommission: 1,
+                    grandTotal: {
+                        $cond: {
+                            if: { $eq: [center.payCriteria, "plus"] },
+                            then: {
+                                $subtract: [
+                                    { $add: ["$totalCash", "$totalOnline"] },
+                                    "$totalCommission"
+                                ]
+                            },
+                            else: { $add: ["$totalCash", "$totalOnline"] }
+                        }
+                    },
+                    balance: {
+                        $cond: {
+                            if: { $eq: [center.payCriteria, "plus"] },
+                            then: { $subtract: ["$totalCash", "$totalCashCommission"] },
+                            else: "$totalCash"
+                        }
+                    }
+                }
+            }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                centreName: center.name,
+                totalSales: salesReport.length > 0 ? salesReport[0].grandTotal : 0,
+                totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
+                totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
+                totalOnline: salesReport.length > 0 ? salesReport[0].totalOnline : 0,
+                totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+exports.getPreviousThreeDaysSales = async (req, res) => {
+    try {
+        const { centerId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(centerId)) {
+            return res.status(400).json({ success: false, message: "Invalid center ID" });
+        }
+
+        const centerObjectId = new mongoose.Types.ObjectId(centerId);
+        const centre = await Centre.findById(centerObjectId);
+        if (!centre) {
+            return res.status(404).json({ success: false, message: "Centre not found" });
+        }
+
+        const today = moment().endOf("day");
+        const threeDaysAgo = moment().subtract(2, "days").startOf("day");
+
+        const salesData = await Customer.aggregate([
+            {
+                $match: {
+                    centreId: centerObjectId,
+                    createdAt: { $gte: threeDaysAgo.toDate(), $lt: today.toDate() }
+                }
+            },
+            {
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                    totalCustomers: { $sum: 1 },
+                    totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+                    totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+                    totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } },
+                }
+            }
+        ]);
+
+        res.status(200).json({ success: true, centerId, salesData });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+// SSE Implementation
+exports.sseCentreUpdates = (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    sseClients.push({ req, res });
+
+    req.on("close", () => {
+        sseClients = sseClients.filter(client => client.res !== res);
+    });
 };
 
