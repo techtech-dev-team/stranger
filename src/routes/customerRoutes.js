@@ -5,6 +5,7 @@ const { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCu
 const router = express.Router();
 
 router.get("/sse", sseHandler);
+
 router.get("/sales-graph", getSalesGraphData);
 
 router.post('/add', protect, addCustomer);

@@ -5,6 +5,215 @@ const mongoose = require('mongoose');
 const Centre = require('../models/Centre');
 const clients = []; // Store SSE clients
 
+const addCustomer = async (req, res) => {
+  try {
+    const {
+      name, number, service, duration, inTime, paymentCash1,
+      paymentOnline1, staffAttending, paymentCash2, paymentOnline2,
+      cashCommission, onlineCommission, outTime, branchId, centreId, regionId
+    } = req.body;
+
+    // Ensure user is authenticated
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    // Check if service exists
+    const serviceExists = await Service.findById(service);
+    if (!serviceExists) return res.status(400).json({ message: 'Invalid service ID' });
+
+    // Check if staff exists
+    const userExists = await User.findById(staffAttending);
+    if (!userExists) return res.status(400).json({ message: 'Invalid user ID' });
+
+    // Convert UTC time to IST
+    const convertToIST = (utcTime) => {
+      if (!utcTime) return null;
+      return new Date(new Date(utcTime).getTime() + 5.5 * 60 * 60 * 1000);
+    };
+
+    // Calculate total cash
+    const totalCash = Number(paymentCash1 || 0) + Number(paymentOnline1 || 0);
+
+    // Update Centre balance
+    const centre = await Centre.findById(centreId);
+    if (!centre) return res.status(404).json({ message: 'Centre not found' });
+
+    let balanceUpdate = 0;
+
+    if (centre.payCriteria === "plus") {
+      balanceUpdate = Number(paymentCash1 || 0) + Number(paymentOnline1 || 0);
+    } else if (centre.payCriteria === "minus") {
+      balanceUpdate = Number(paymentCash1 || 0) + Number(paymentOnline1 || 0);
+    }
+
+    centre.balance += balanceUpdate;
+    await centre.save();
+
+    // Create new customer
+    const newCustomer = new Customer({
+      name,
+      number,
+      service,
+      duration,
+      inTime: inTime,
+      paymentCash1,
+      paymentOnline1,
+      staffAttending,
+      paymentCash2,
+      paymentOnline2,
+      cashCommission,
+      onlineCommission,
+      outTime: convertToIST(outTime),
+      createdBy: req.user._id,
+      branchId,
+      centreId,
+      regionId
+    });
+
+    await newCustomer.save();
+
+    // Fetch the customer with populated references
+    const populatedCustomer = await Customer.findById(newCustomer._id)
+      .populate('service')
+      .populate('staffAttending')
+      .populate('branchId')
+      .populate('centreId')
+      .populate('regionId')
+      .exec();
+
+    sendSSEEvent({ message: "New customer added", customer: populatedCustomer });
+
+    res.status(201).json({ message: 'Customer added successfully', customer: newCustomer });
+
+  } catch (error) {
+    console.error('Error adding customer:', error);
+    res.status(500).json({ message: 'An error occurred while adding the customer', error: error.message });
+  }
+};
+const sendSSEEvent = (data) => {
+  clients.forEach((client) => {
+    client.res.write(`data: ${JSON.stringify(data)}\n\n`);
+  });
+};
+
+const sseHandler = (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  clients.push({ res });
+
+  req.on('close', () => {
+    clients.splice(clients.indexOf(res), 1);
+  });
+};
+
+const getCustomers = async (req, res) => {
+  try {
+    const customers = await Customer.find()
+      .populate('service')
+      .populate('staffAttending')
+      .populate('branchId')
+      .populate('centreId')
+      .populate('regionId')
+      .exec();
+
+    res.status(200).json(customers);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const getCentreSalesReport = async (req, res) => {
+  try {
+    const { centreId } = req.query;
+
+    let centresQuery = centreId && mongoose.Types.ObjectId.isValid(centreId) ? { _id: centreId } : {};
+
+    // Fetch all centers or specific center
+    const centres = await Centre.find(centresQuery);
+    if (!centres.length) {
+      return res.status(404).json({ message: 'No centers found' });
+    }
+
+    let responseData = [];
+
+    for (const centre of centres) {
+      const payCriteria = centre.payCriteria; // "plus" or "minus"
+
+      const salesReport = await Customer.aggregate([
+        { $match: { centreId: centre._id } },
+        {
+          $group: {
+            _id: null,
+            totalCustomers: { $sum: 1 }, // Count the number of customers
+            totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+            totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+            totalCashCommission: { $sum: "$cashCommission" },
+            totalOnlineCommission: { $sum: "$onlineCommission" },
+            totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            totalCustomers: 1,
+            totalCash: 1,
+            totalOnline: 1,
+            totalCashCommission: 1,
+            totalOnlineCommission: 1,
+            totalCommission: 1,
+            grandTotal: {
+              $cond: {
+                if: { $eq: [payCriteria, "plus"] },
+                then: {
+                  $subtract: [
+                    { $add: ["$totalCash", "$totalOnline"] },
+                    "$totalCommission"
+                  ]
+                },
+                else: { $add: ["$totalCash", "$totalOnline"] }
+              }
+            },
+            balance: {
+              $cond: {
+                if: { $eq: [payCriteria, "plus"] },
+                then: { $subtract: ["$totalCash", "$totalCashCommission"] },
+                else: "$totalCash"
+              }
+            }
+          }
+        }
+      ]);
+
+      // Calculate totals for the center
+      let balance = centre.previousBalance + centre.balance;
+
+      responseData.push({
+        centreId: centre._id,
+        centreName: centre.name,
+        centreCode: centre.centreId,
+        payCriteria,
+        balance,
+        totalCash: salesReport[0]?.totalCash || 0,
+        totalOnline: salesReport[0]?.totalOnline || 0,
+        totalSales: salesReport[0]?.grandTotal || 0,
+        totalCustomers: salesReport[0]?.totalCustomers || 0, // Added customer count
+        salesReport
+      });
+    }
+
+    res.status(200).json({
+      message: 'Sales report retrieved successfully',
+      data: responseData
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
 const getSalesGraphData = async (req, res) => {
   try {
     const { centreId } = req.query;
@@ -92,216 +301,6 @@ const getSalesGraphData = async (req, res) => {
   }
 }
 
-const addCustomer = async (req, res) => {
-  try {
-    const { 
-      name, number, service, duration, inTime, paymentCash1, 
-      paymentOnline1, staffAttending, paymentCash2, paymentOnline2, 
-      cashCommission, onlineCommission, outTime, branchId, centreId, regionId 
-    } = req.body;
-
-    // Ensure user is authenticated
-    if (!req.user || !req.user._id) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
-
-    // Check if service exists
-    const serviceExists = await Service.findById(service);
-    if (!serviceExists) return res.status(400).json({ message: 'Invalid service ID' });
-
-    // Check if staff exists
-    const userExists = await User.findById(staffAttending);
-    if (!userExists) return res.status(400).json({ message: 'Invalid user ID' });
-
-    // Convert UTC time to IST
-    const convertToIST = (utcTime) => {
-      if (!utcTime) return null;
-      return new Date(new Date(utcTime).getTime() + 5.5 * 60 * 60 * 1000);
-    };
-
-    // Calculate total cash
-    const totalCash = Number(paymentCash1 || 0) + Number(paymentOnline1 || 0);
-
-    // Update Centre balance
-    const centre = await Centre.findById(centreId);
-    if (!centre) return res.status(404).json({ message: 'Centre not found' });
-
-    let balanceUpdate = 0;
-
-    if (centre.payCriteria === "plus") {
-      balanceUpdate = Number(paymentCash1 || 0) + Number(paymentOnline1 || 0);
-    } else if (centre.payCriteria === "minus") {
-      balanceUpdate = Number(paymentCash1 || 0) + Number(paymentOnline1 || 0);    
-    }
-
-    centre.balance += balanceUpdate;
-    await centre.save();
-
-    // Create new customer
-    const newCustomer = new Customer({
-      name,
-      number,
-      service,
-      duration,
-      inTime: inTime,
-      paymentCash1,
-      paymentOnline1,
-      staffAttending,
-      paymentCash2,
-      paymentOnline2,
-      cashCommission,
-      onlineCommission,
-      outTime: convertToIST(outTime),
-      createdBy: req.user._id,
-      branchId,
-      centreId,
-      regionId
-    });
-
-    await newCustomer.save();
-    
-    // Fetch the customer with populated references
-    const populatedCustomer = await Customer.findById(newCustomer._id)
-      .populate('service')
-      .populate('staffAttending')
-      .populate('branchId')
-      .populate('centreId')
-      .populate('regionId')
-      .exec();
-
-    sendSSEEvent({ message: "New customer added", customer: populatedCustomer });
-
-    res.status(201).json({ message: 'Customer added successfully', customer: newCustomer });
-
-  } catch (error) {
-    console.error('Error adding customer:', error);
-    res.status(500).json({ message: 'An error occurred while adding the customer', error: error.message });
-  }
-};
-const sendSSEEvent = (data) => {
-  clients.forEach((client) => {
-    client.res.write(`data: ${JSON.stringify(data)}\n\n`);
-  });
-};
-
-const sseHandler = (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
-
-  clients.push({ res });
-
-  req.on('close', () => {
-    clients.splice(clients.indexOf(res), 1);
-  });
-};
-
-const getCustomers = async (req, res) => {
-  try {
-    const customers = await Customer.find()
-      .populate('service') 
-      .populate('staffAttending')
-      .populate('branchId')
-      .populate('centreId')
-      .populate('regionId')
-      .exec();
-
-    res.status(200).json(customers);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
-
-const getCentreSalesReport = async (req, res) => { 
-  try {
-    const { centreId } = req.query;
-
-    let centresQuery = centreId && mongoose.Types.ObjectId.isValid(centreId) ? { _id: centreId } : {};
-
-    // Fetch all centers or specific center
-    const centres = await Centre.find(centresQuery);
-    if (!centres.length) {
-      return res.status(404).json({ message: 'No centers found' });
-    }
-
-    let responseData = [];
-
-    for (const centre of centres) {
-      const payCriteria = centre.payCriteria; // "plus" or "minus"
-
-      const salesReport = await Customer.aggregate([
-        { $match: { centreId: centre._id } },
-        {
-          $group: {
-            _id: null,
-            totalCustomers: { $sum: 1 }, // Count the number of customers
-            totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
-            totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
-            totalCashCommission: { $sum: "$cashCommission" },
-            totalOnlineCommission: { $sum: "$onlineCommission" },
-            totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } }
-          }
-        },
-        {
-          $project: {
-            _id: 0,
-            totalCustomers: 1,
-            totalCash: 1,
-            totalOnline: 1,
-            totalCashCommission: 1,
-            totalOnlineCommission: 1,
-            totalCommission: 1,
-            grandTotal: {
-              $cond: {
-                if: { $eq: [payCriteria, "plus"] },
-                then: {    
-                  $subtract: [
-                    { $add: ["$totalCash", "$totalOnline"] },
-                    "$totalCommission"
-                  ]
-                },
-                else: { $add: ["$totalCash", "$totalOnline"] }
-              }
-            },
-            balance: {
-              $cond: {
-                if: { $eq: [payCriteria, "plus"] },
-                then: { $subtract: ["$totalCash", "$totalCashCommission"] },
-                else: "$totalCash"
-              }
-            }
-          }
-        }
-      ]);
-
-      // Calculate totals for the center
-      let balance = centre.previousBalance + centre.balance;
-
-      responseData.push({
-        centreId: centre._id,
-        centreName: centre.name,
-        centreCode: centre.centreId,
-        payCriteria,
-        balance,
-        totalCash: salesReport[0]?.totalCash || 0,
-        totalOnline: salesReport[0]?.totalOnline || 0,
-        totalSales: salesReport[0]?.grandTotal || 0,
-        totalCustomers: salesReport[0]?.totalCustomers || 0, // Added customer count
-        salesReport
-      });
-    }
-
-    res.status(200).json({
-      message: 'Sales report retrieved successfully',
-      data: responseData
-    });
-
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
-
 const getCentreSalesReportDaily = async (req, res) => {
   try {
     const { centreId, selectedDate } = req.query;
@@ -327,15 +326,15 @@ const getCentreSalesReportDaily = async (req, res) => {
       const payCriteria = centre.payCriteria;
 
       const salesReport = await Customer.aggregate([
-        { 
-          $match: { 
-            centreId: centre._id, 
-            createdAt: { $gte: startOfDay, $lte: endOfDay } 
-          } 
+        {
+          $match: {
+            centreId: centre._id,
+            createdAt: { $gte: startOfDay, $lte: endOfDay }
+          }
         },
         {
           $group: {
-            _id: null, 
+            _id: null,
             totalCustomers: { $sum: 1 },
             totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
             totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
@@ -414,7 +413,7 @@ const editCustomer = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
     console.log(updates);
-    
+
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid customer ID" });
     }
@@ -432,15 +431,15 @@ const editCustomer = async (req, res) => {
     console.log("Centre Pay Criteria:", centre.payCriteria);
 
     const newPaymentCash2 = Number(updates.paymentCash2) || 0;
-    const cashCommissionAmount = Number(updates.cashCommission) || 0; 
+    const cashCommissionAmount = Number(updates.cashCommission) || 0;
 
     let balanceUpdate = 0;
 
     if (centre.payCriteria === "plus") {
-      balanceUpdate = Number(updates.paymentCash2 || 0) + Number(updates.paymentOnline2 || 0) - 
-                      Number(updates.cashCommission || 0) - Number(updates.onlineCommission || 0);
+      balanceUpdate = Number(updates.paymentCash2 || 0) + Number(updates.paymentOnline2 || 0) -
+        Number(updates.cashCommission || 0) - Number(updates.onlineCommission || 0);
     } else if (centre.payCriteria === "minus") {
-      balanceUpdate = Number(updates.paymentOnline2 || 0) + Number(updates.paymentCash2 || 0) 
+      balanceUpdate = Number(updates.paymentOnline2 || 0) + Number(updates.paymentCash2 || 0)
     }
 
     centre.balance += balanceUpdate;
@@ -455,4 +454,4 @@ const editCustomer = async (req, res) => {
   }
 };
 
-module.exports = { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler , getCentreSalesReportDaily , getSalesGraphData };
+module.exports = { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData };
