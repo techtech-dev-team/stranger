@@ -1,85 +1,96 @@
 const Expense = require('../models/Expense');
+const clients = []; // Store SSE clients
 
+// SSE Handler for Real-Time Expense Updates
+const sseHandler = (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  clients.push({ res });
+
+  req.on('close', () => {
+    clients.splice(clients.indexOf(res), 1);
+  });
+};
+
+// Function to send SSE event
+const sendSSEEvent = (data) => {
+  clients.forEach((client) => {
+    client.res.write(`data: ${JSON.stringify(data)}\n\n`);
+  });
+};
+
+// Add Expense
 exports.addExpense = async (req, res) => {
   try {
-    const { expenseDate, paidTo, reason, amount, verified, regionIds, branchIds, centreIds } = req.body;
-    console.log(req.body);
-    
+    const { expenseDate, paidTo, reason, amount, verified } = req.body;
+
     const newExpense = new Expense({
       expenseDate,
       paidTo,
       reason,
       amount,
       verified,
-      regionIds,
-      branchIds,
-      centreIds
+      createdBy: req.user._id, // Ensure authenticated user is adding the expense
     });
 
     await newExpense.save();
+
+    // Send SSE event when a new expense is added
+    sendSSEEvent({ message: "New expense added", expense: newExpense });
+
     res.status(201).json({ message: 'Expense added successfully', expense: newExpense });
-    console.log(newExpense);
-    
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Error adding expense:', error);
+    res.status(500).json({ message: 'An error occurred while adding the expense', error: error.message });
   }
 };
-exports.getAllExpenses = async (req, res) => {
+
+// Get Expenses List
+exports.getExpenses = async (req, res) => {
   try {
-    const expenses = await Expense.find()
-      .populate('regionIds')
-      .populate('branchIds')
-      .populate('centreIds')
-      .sort({ expenseDate: -1 });
+    const expenses = await Expense.find().sort({ expenseDate: -1 });
 
     res.status(200).json(expenses);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+// Get Expense by ID
 exports.getExpenseById = async (req, res) => {
   try {
-    const expense = await Expense.findById(req.params.id)
-      .populate('regionIds')
-      .populate('branchIds')
-      .populate('centreIds');
+    const { id } = req.params;
 
-    if (!expense) return res.status(404).json({ message: 'Expense not found' });
+    const expense = await Expense.findById(id);
+    if (!expense) {
+      return res.status(404).json({ message: 'Expense not found' });
+    }
 
     res.status(200).json(expense);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-exports.updateExpense = async (req, res) => {
+
+// Edit Expense
+exports.editExpense = async (req, res) => {
   try {
-    const { expenseDate, paidTo, reason, amount, verified, regionIds, branchIds, centreIds } = req.body;
+    const { id } = req.params;
+    const updates = req.body;
 
-    const updatedExpense = await Expense.findByIdAndUpdate(req.params.id, {
-      expenseDate,
-      paidTo,
-      reason,
-      amount,
-      verified,
-      regionIds,
-      branchIds,
-      centreIds
-    }, { new: true });
+    const updatedExpense = await Expense.findByIdAndUpdate(id, updates, { new: true });
 
-    if (!updatedExpense) return res.status(404).json({ message: 'Expense not found' });
+    if (!updatedExpense) {
+      return res.status(404).json({ message: 'Expense not found' });
+    }
 
     res.status(200).json({ message: 'Expense updated successfully', expense: updatedExpense });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-exports.deleteExpense = async (req, res) => {
-  try {
-    const expense = await Expense.findByIdAndDelete(req.params.id);
-    if (!expense) return res.status(404).json({ message: 'Expense not found' });
 
-    res.status(200).json({ message: 'Expense deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
+module.exports = { addExpense, getExpenses, getExpenseById, editExpense, sseHandler };
