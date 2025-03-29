@@ -23,9 +23,10 @@ const sendSSEEvent = (data) => {
 };
 
 // Add Expense
+// Add Expense
 exports.addExpense = async (req, res) => {
   try {
-    const { expenseDate, paidTo, reason, amount, verified } = req.body;
+    const { expenseDate, paidTo, reason, amount, verified, regionIds, branchIds, centreIds } = req.body;
 
     const newExpense = new Expense({
       expenseDate,
@@ -33,31 +34,48 @@ exports.addExpense = async (req, res) => {
       reason,
       amount,
       verified,
-      createdBy: req.user._id, // Ensure authenticated user is adding the expense
+      regionIds: regionIds || [],
+      branchIds: branchIds || [],
+      centreIds: centreIds || [],
+      createdBy: req.user._id,
     });
 
     await newExpense.save();
 
-    // Send SSE event when a new expense is added
-    sendSSEEvent({ message: "New expense added", expense: newExpense });
+    // Populate the newly saved expense
+    const populatedExpense = await Expense.findById(newExpense._id)
+      .populate('regionIds')
+      .populate('branchIds')
+      .populate('centreIds');
 
-    res.status(201).json({ message: 'Expense added successfully', expense: newExpense });
+    // Send SSE event with populated data
+    sendSSEEvent({ message: "New expense added", expense: populatedExpense });
+
+    res.status(201).json({ message: 'Expense added successfully', expense: populatedExpense });
   } catch (error) {
     console.error('Error adding expense:', error);
     res.status(500).json({ message: 'An error occurred while adding the expense', error: error.message });
   }
 };
 
+
+
 // Get Expenses List
 exports.getExpenses = async (req, res) => {
   try {
-    const expenses = await Expense.find().sort({ expenseDate: -1 });
+    const expenses = await Expense.find()
+      .populate('regionIds')
+      .populate('branchIds')
+      .populate('centreIds')
+      .sort({ expenseDate: -1 });
 
     res.status(200).json(expenses);
   } catch (error) {
+    console.error('Error fetching expenses:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 // Get Expense by ID
 exports.getExpenseById = async (req, res) => {
@@ -75,21 +93,20 @@ exports.getExpenseById = async (req, res) => {
   }
 };
 
-// Edit Expense
 exports.editExpense = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log("Updating expense with ID:", id);
     const updates = req.body;
-
     const updatedExpense = await Expense.findByIdAndUpdate(id, updates, { new: true });
-
     if (!updatedExpense) {
-      return res.status(404).json({ message: 'Expense not found' });
+      console.log("Expense not found:", id);
+      return res.status(404).json({ message: "Expense not found" });
     }
-
-    res.status(200).json({ message: 'Expense updated successfully', expense: updatedExpense });
+    res.status(200).json({ message: "Expense updated successfully", expense: updatedExpense });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error updating expense:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 

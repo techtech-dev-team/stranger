@@ -7,7 +7,6 @@ const router = express.Router();
 // SSE Endpoint for real-time updates
 router.get('/sse', sseHandler);
 
-// Routes
 router.post('/add', protect, addExpense);
 router.get('/list', protect, getExpenses);
 router.get('/:id', protect, getExpenseById);

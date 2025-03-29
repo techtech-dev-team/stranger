@@ -98,13 +98,13 @@ app.use("/api/users", userRoutes);
 app.use("/game", gameRoutes);
 app.use("/api/vision", visionRoutes);
 app.use("/api/customer", customerRoutes);
+app.use("/api/expense", expenseRoutes);
 
 // Routes (Protected)
 app.use(protect);
 // Refresh data before any API route is hit
 app.use("/api/admin", adminRoutes);
 app.use("/api/service", serviceRoutes);
-app.use("/api/expense", expenseRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/visionid", visionIdRoutes);
 app.use("/api/regions", regionRoutes);
