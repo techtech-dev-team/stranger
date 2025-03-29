@@ -10,10 +10,9 @@ const protect = async (req, res, next) => {
   if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
     token = req.headers.authorization.split(" ")[1];
   } else if (req.cookies && req.cookies.token) {
-    token = req.cookies.token; // ✅ Get token from cookies
+    token = req.cookies.token;
   }
 
-  // Check if token is present
   if (!token) {
     return res.status(401).json({ message: "Not authorized, no token" });
   }
@@ -21,19 +20,23 @@ const protect = async (req, res, next) => {
   try {
     // Verify and decode token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    console.log("Decoded Token:", decoded); // ✅ Debugging log
 
-    // Fetch user from database and attach to request
-    req.user = await User.findById(decoded._id).select("-pin"); // Exclude PIN for security
+    // Fetch user and attach to req
+    req.user = await User.findById(decoded._id).select("-pin");
 
     if (!req.user) {
       return res.status(401).json({ message: "User not found" });
     }
 
-    next(); // Proceed to the next middleware or route handler
+    console.log("Authenticated User:", req.user); // ✅ Debugging log
+    next();
   } catch (error) {
-    res.status(401).json({ message: "Token invalid", error: error.message });
+    return res.status(401).json({ message: "Token invalid", error: error.message });
   }
 };
+
 
 // Admin-Only Middleware
 const adminOnly = (req, res, next) => {

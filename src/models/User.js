@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       required: true,
-      enum: ["CM", "ARM", "Vision", "ID", "BSS", "ClubStaff", "OT", "CT"],
+      enum: ["CM", "ARM", "Vision", "ID", "BSS", "ClubStaff", "OT", "CT", "FM"],
     },
     branchIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Branch" }],
     centreIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Centre" }],
@@ -61,6 +61,13 @@ userSchema.pre("save", function (next) {
 
   const attendance = this.monthlyAttendance.get(currentMonth);
 
+  if (this.role === "CM") {
+    if (this.branchIds.length > 1 || this.centreIds.length > 1 || this.regionIds.length > 1) {
+      return next(new Error("Centre Managers can only have one branch, centre, and region."));
+    }
+  }
+  next();
+  
   // Increment present count if absent not marked today
   if (!attendance.dailyRecords.has(currentDate)) {
     attendance.present += 1;

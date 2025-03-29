@@ -19,59 +19,38 @@ const getCurrentMonth = () => {
 
 exports.registerUser = async (req, res) => {
   try {
-    const {
-      name,
-      mobileNumber,
-      email,
-      role,
-      branchIds,
-      centreIds,
-      regionIds,
-      status,
-    } = req.body;
+    const { name, mobileNumber, email, role, branchIds, centreIds, regionIds, status } = req.body;
 
-    // Check if user with the same mobile number or email already exists
-    const existingUser = await User.findOne({
-      $or: [{ mobileNumber }, { email }],
-    });
-    if (existingUser)
-      return res.status(400).json({ message: "User already exists" });
+    // Check for existing user
+    const existingUser = await User.findOne({ $or: [{ mobileNumber }, { email }] });
+    if (existingUser) return res.status(400).json({ message: "User already exists" });
 
     let loginId = null;
     let pin = null;
 
-    // Only generate loginId & PIN for specific roles
-    if (["CM", "ARM", "Vision", "ID", "BSS", "OT", "CT"].includes(role)) {
+    if (["CM", "ARM", "Vision", "ID", "BSS", "OT", "CT", "FM"].includes(role)) {
       loginId = generateLoginId(role);
       pin = generateRandom4Digit().toString();
     }
 
+    // Ensure CM is assigned only one branch, centre, and region
+    if (role === "CM") {
+      if (branchIds.length !== 1 || centreIds.length !== 1 || regionIds.length !== 1) {
+        return res.status(400).json({ message: "Centre Managers must be assigned exactly one branch, centre, and region." });
+      }
+    }
+
     const newUser = new User({
-      name,
-      mobileNumber,
-      email,
-      role,
-      branchIds,
-      centreIds,
-      regionIds,
-      status,
-      loginId,
-      pin,
+      name, mobileNumber, email, role, branchIds, centreIds, regionIds, status, loginId, pin,
     });
 
     await newUser.save();
-    res
-      .status(201)
-      .json({ message: "User registered successfully", user: newUser });
+    res.status(201).json({ message: "User registered successfully", user: newUser });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error registering user", error: error.message });
+    res.status(500).json({ message: "Error registering user", error: error.message });
   }
 };
 
-// ✅ Login User
-// ✅ Login User
 exports.login = async (req, res) => {
   try {
     const { loginId, pin } = req.body;
@@ -111,19 +90,24 @@ exports.login = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find()
-      .populate("branchIds") // Populate multiple branch IDs
-      .populate("centreIds") // Populate multiple centre IDs
-      .populate("regionIds"); // Populate multiple region IDs
+    const { role, centreIds } = req.user; // Get logged-in user details
+
+    let query = {};
+    if (role === "CM") {
+      query = { centreIds: { $in: centreIds } };
+    }
+
+    const users = await User.find(query)
+      .populate("branchIds")
+      .populate("centreIds")
+      .populate("regionIds");
 
     res.json(users);
   } catch (error) {
-    res.status(500).json({
-      message: "Error retrieving users",
-      error: error.message,
-    });
+    res.status(500).json({ message: "Error retrieving users", error: error.message });
   }
 };
+
 exports.getClubStaffUsers = async (req, res) => {
   try {
     const clubStaffUsers = await User.find({ role: "ClubStaff" })
@@ -162,48 +146,32 @@ exports.getUserById = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    let { regionIds, branchIds, centreIds } = req.body;
+    const { role, centreIds } = req.user;
+    const { branchIds, centreIds: newCentreIds, regionIds } = req.body;
 
-    console.log("Received data:", { regionIds, branchIds, centreIds });
-
-    // Validate ObjectId format
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: "Invalid user ID format" });
     }
 
-    // Ensure we are storing only ObjectIds
-    const extractIds = (arr) =>
-      arr
-        .map((item) => (typeof item === "object" && item._id ? item._id : item)) // Extract _id if object
-        .filter((id) => mongoose.Types.ObjectId.isValid(id)); // Ensure valid ObjectId
+    let user = await User.findById(id);
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-    regionIds = extractIds(regionIds || []);
-    branchIds = extractIds(branchIds || []);
-    centreIds = extractIds(centreIds || []);
-
-    console.log("Processed IDs:", { regionIds, branchIds, centreIds });
-
-    // Find user
-    const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+    // Restrict Centre Manager access
+    if (role === "CM" && !user.centreIds.some(id => centreIds.includes(id.toString()))) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
-    // Update fields
-    user.regionIds = regionIds;
+    // Update user details
     user.branchIds = branchIds;
-    user.centreIds = centreIds;
-
+    user.centreIds = newCentreIds;
+    user.regionIds = regionIds;
     await user.save();
 
     res.json({ message: "User updated successfully", user });
   } catch (error) {
-    console.error("Error updating user:", error.stack || error);
-    res.status(500).json({ error: "Internal Server Error", details: error.message });
+    res.status(500).json({ error: "Error updating user", details: error.message });
   }
 };
-
-
 
 exports.deleteUser = async (req, res) => {
   try {
@@ -265,7 +233,6 @@ exports.markAbsent = async (req, res) => {
   }
 };
 
-
 exports.getAttendanceReport = async (req, res) => {
   try {
     const { id } = req.params;
@@ -290,7 +257,6 @@ exports.getAttendanceReport = async (req, res) => {
     res.status(500).json({ message: "Error retrieving attendance report", error: error.message });
   }
 };
-
 
 exports.getMonthlyAttendanceReport = async (req, res) => {
   try {
@@ -320,7 +286,6 @@ exports.getMonthlyAttendanceReport = async (req, res) => {
     res.status(500).json({ message: "Error retrieving monthly attendance report", error: error.message });
   }
 };
-
 
 exports.getPresentStaffByDate = async (req, res) => {
   try {
