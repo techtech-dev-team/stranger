@@ -41,7 +41,7 @@ exports.registerUser = async (req, res) => {
     let pin = null;
 
     // Only generate loginId & PIN for specific roles
-    if (["CM", "ARM", "Vision", "ID", "Admin", "ClubStaff"].includes(role)) {
+    if (["CM", "ARM", "Vision", "ID", "BSS", "OT", "CT"].includes(role)) {
       loginId = generateLoginId(role);
       pin = generateRandom4Digit().toString();
     }

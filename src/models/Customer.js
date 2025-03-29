@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
 const customerSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  number: { type: String, required: true },
+  name: { type: String, required: false },
+  number: { type: String, required: false },
   service: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true },
   duration: { type: String, required: true },
   inTime: { type: Date, required: true }, 
@@ -24,4 +24,3 @@ const customerSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Customer', customerSchema);
-    

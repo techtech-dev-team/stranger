@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       required: true,
-      enum: ["CM", "ARM", "Vision", "ID", "Admin", "ClubStaff", "Manager"],
+      enum: ["CM", "ARM", "Vision", "ID", "BSS", "ClubStaff", "OT", "CT"],
     },
     branchIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Branch" }],
     centreIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Centre" }],
