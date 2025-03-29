@@ -90,11 +90,7 @@ const getSalesGraphData = async (req, res) => {
     console.error("Error fetching sales graph data:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
-};
-
-module.exports = { getSalesGraphData };
-
-
+}
 
 const addCustomer = async (req, res) => {
   try {
@@ -221,7 +217,7 @@ const getCentreSalesReport = async (req, res) => {
   try {
     const { centreId } = req.query;
 
-    let centresQuery = centreId && mongoose.isValidObjectId(centreId) ? { _id: centreId } : {};
+    let centresQuery = centreId && mongoose.Types.ObjectId.isValid(centreId) ? { _id: centreId } : {};
 
     // Fetch all centers or specific center
     const centres = await Centre.find(centresQuery);
@@ -315,7 +311,7 @@ const getCentreSalesReportDaily = async (req, res) => {
       return res.status(400).json({ message: 'Please provide a valid date' });
     }
 
-    let centresQuery = centreId && mongoose.isValidObjectId(centreId) ? { _id: centreId } : {};
+    let centresQuery = centreId && mongoose.Types.ObjectId.isValid(centreId) ? { _id: centreId } : {};
     const centres = await Centre.find(centresQuery);
 
     if (!centres.length) {
@@ -328,7 +324,7 @@ const getCentreSalesReportDaily = async (req, res) => {
     endOfDay.setHours(23, 59, 59, 999);
 
     for (const centre of centres) {
-      const payCriteria = centre.payCriteria; // "plus" or "minus"
+      const payCriteria = centre.payCriteria;
 
       const salesReport = await Customer.aggregate([
         { 
@@ -347,38 +343,17 @@ const getCentreSalesReportDaily = async (req, res) => {
             totalOnlineCommission: { $sum: "$onlineCommission" },
             totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } }
           }
-        },
-        {
-          $project: {
-            _id: 0,
-            totalCustomers: 1,
-            totalCash: 1,
-            totalOnline: 1,
-            totalCashCommission: 1,
-            totalOnlineCommission: 1,
-            totalCommission: 1,
-            grandTotal: {
-              $cond: {
-                if: { $eq: [payCriteria, "plus"] },
-                then: {    
-                  $subtract: [
-                    { $add: ["$totalCash", "$totalOnline"] },
-                    "$totalCommission"
-                  ]
-                },
-                else: { $add: ["$totalCash", "$totalOnline"] }
-              }
-            },
-            balance: {
-              $cond: {
-                if: { $eq: [payCriteria, "plus"] },
-                then: { $subtract: ["$totalCash", "$totalCashCommission"] },
-                else: "$totalCash"
-              }
-            }
-          }
         }
       ]);
+
+      let reportData = salesReport[0] || {
+        totalCustomers: 0,
+        totalCash: 0,
+        totalOnline: 0,
+        totalCashCommission: 0,
+        totalOnlineCommission: 0,
+        totalCommission: 0,
+      };
 
       let balance = centre.previousBalance + centre.balance;
 
@@ -388,10 +363,12 @@ const getCentreSalesReportDaily = async (req, res) => {
         centreCode: centre.centreId,
         payCriteria,
         balance,
-        totalCash,
-        totalOnline,
-        totalSales,
-        totalCustomers,
+        totalCash: reportData.totalCash,
+        totalOnline: reportData.totalOnline,
+        totalSales: payCriteria === "plus"
+          ? reportData.totalCash + reportData.totalOnline - reportData.totalCommission
+          : reportData.totalCash + reportData.totalOnline,
+        totalCustomers: reportData.totalCustomers,
         selectedDate
       });
     }
@@ -405,6 +382,7 @@ const getCentreSalesReportDaily = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 const getCustomerById = async (req, res) => {
   try {

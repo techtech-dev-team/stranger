@@ -127,35 +127,36 @@ router.get("/report/:centerId", async (req, res) => {
         if (selectedDate) {
             const dateStart = new Date(selectedDate);
             dateStart.setHours(0, 0, 0, 0);
-            
+
             const dateEnd = new Date(selectedDate);
             dateEnd.setHours(23, 59, 59, 999);
-            
+
             expenseMatchCondition.createdAt = { $gte: dateStart, $lte: dateEnd };
         }
-        
+
         const expenses = await Expense.find(expenseMatchCondition).lean();
-                const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
+        const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
 
         res.status(200).json({
             success: true,
             data: {
                 centreName: center.name,
-                totalSales: salesReport[0]?.grandTotal || 0,
-                totalCustomers: salesReport[0]?.totalCustomers || 0,
-                totalCash: salesReport[0]?.totalCash || 0,
-                totalOnline: salesReport[0]?.totalOnline || 0,
-                totalCommission: salesReport[0]?.totalCommission || 0,
-                expensesTotal: totalExpense,
-                cashCommission: salesReport[0]?.totalCashCommission || 0,
-                onlineComm: salesReport[0]?.totalOnlineCommission || 0,
+                totalSales: salesReport.length > 0 ? salesReport[0].grandTotal : 0,
+                totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
+                totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
+                totalOnline: salesReport.length > 0 ? salesReport[0].totalOnline : 0,
+                totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
+                expensesTotal: totalExpense || 0,
+                cashCommission: salesReport.length > 0 ? salesReport[0].totalCashCommission : 0,
+                onlineComm: salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0,
                 balance,
-                centerDetails: center, // Include the full populated center data
-                customers,             // Include populated customer data with date filter
-                expenses,              // Include expenses data with date filter
-                salesReport            // Include aggregated sales report
+                centerDetails: center,
+                customers,
+                expenses,
+                salesReport
             }
         });
+
     } catch (error) {
         console.error(`Error fetching report for Center ID ${req.params.centerId}:`, error);
         res.status(500).json({ success: false, message: "Server error" });
