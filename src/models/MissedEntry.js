@@ -7,4 +7,9 @@ const missedEntrySchema = new mongoose.Schema({
   notified: { type: Boolean, default: false },
 }, { timestamps: true });
 
+missedEntrySchema.pre(/^find/, function (next) {
+  this.populate('customerId visionId');
+  next();
+});
+
 module.exports = mongoose.model('MissedEntry', missedEntrySchema);

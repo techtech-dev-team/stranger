@@ -4,6 +4,8 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const Centre = require('../models/Centre');
 const clients = []; // Store SSE clients
+const moment = require('moment-timezone');
+
 
 const addCustomer = async (req, res) => {
   try {
@@ -56,7 +58,7 @@ const addCustomer = async (req, res) => {
       number,
       service,
       duration,
-      inTime: inTime,
+      inTime: moment.tz(inTime, "MM/DD/YYYY, hh:mm:ss A", "Asia/Kolkata").toDate(), // Convert to IST
       paymentCash1,
       paymentOnline1,
       staffAttending,
