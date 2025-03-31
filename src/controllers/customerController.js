@@ -3,6 +3,7 @@ const Service = require('../models/Service');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 const Centre = require('../models/Centre');
+const { login } = require('./userController');
 const clients = []; // Store SSE clients
 const moment = require('moment-timezone');
 
@@ -15,6 +16,8 @@ const addCustomer = async (req, res) => {
       cashCommission, onlineCommission, outTime, branchId, centreId, regionId
     } = req.body;
 
+    console.log("Body", req.body);
+    
     // Ensure user is authenticated
     if (!req.user || !req.user._id) {
       return res.status(401).json({ message: 'Unauthorized' });
@@ -72,9 +75,10 @@ const addCustomer = async (req, res) => {
       centreId,
       regionId
     });
-
+    
     await newCustomer.save();
-
+    console.log("New newCustomer", newCustomer);
+    
     // Fetch the customer with populated references
     const populatedCustomer = await Customer.findById(newCustomer._id)
       .populate('service')
