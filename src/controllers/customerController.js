@@ -3,6 +3,7 @@ const Service = require('../models/Service');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 const Centre = require('../models/Centre');
+const { login } = require('./userController');
 const clients = []; // Store SSE clients
 
 const addCustomer = async (req, res) => {
@@ -13,6 +14,8 @@ const addCustomer = async (req, res) => {
       cashCommission, onlineCommission, outTime, branchId, centreId, regionId
     } = req.body;
 
+    console.log("Body", req.body);
+    
     // Ensure user is authenticated
     if (!req.user || !req.user._id) {
       return res.status(401).json({ message: 'Unauthorized' });
@@ -56,8 +59,7 @@ const addCustomer = async (req, res) => {
       number,
       service,
       duration,
-      inTime: inTime,
-      paymentCash1,
+      inTime: new Date(inTime).toISOString(), 
       paymentOnline1,
       staffAttending,
       paymentCash2,
@@ -72,7 +74,8 @@ const addCustomer = async (req, res) => {
     });
     
     await newCustomer.save();
-
+    console.log("New newCustomer", newCustomer);
+    
     // Fetch the customer with populated references
     const populatedCustomer = await Customer.findById(newCustomer._id)
       .populate('service')
