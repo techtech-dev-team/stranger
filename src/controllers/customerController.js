@@ -70,7 +70,7 @@ const addCustomer = async (req, res) => {
       centreId,
       regionId
     });
-
+    
     await newCustomer.save();
 
     // Fetch the customer with populated references
