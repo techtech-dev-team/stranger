@@ -90,14 +90,7 @@ exports.login = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const { role, centreIds } = req.user; // Get logged-in user details
-
-    let query = {};
-    if (role === "CM") {
-      query = { centreIds: { $in: centreIds } };
-    }
-
-    const users = await User.find(query)
+    const users = await User.find()
       .populate("branchIds")
       .populate("centreIds")
       .populate("regionIds");
@@ -107,6 +100,7 @@ exports.getAllUsers = async (req, res) => {
     res.status(500).json({ message: "Error retrieving users", error: error.message });
   }
 };
+
 
 exports.getClubStaffUsers = async (req, res) => {
   try {
