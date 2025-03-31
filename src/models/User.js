@@ -61,21 +61,18 @@ userSchema.pre("save", function (next) {
 
   const attendance = this.monthlyAttendance.get(currentMonth);
 
-  if (this.role === "CM") {
-    if (this.branchIds.length > 1 || this.centreIds.length > 1 || this.regionIds.length > 1) {
-      return next(new Error("Centre Managers can only have one branch, centre, and region."));
-    }
-  }
-  next();
-  
-  // Increment present count if absent not marked today
+  // Only auto-mark present if user is not already absent for today
   if (!attendance.dailyRecords.has(currentDate)) {
     attendance.present += 1;
+    attendance.dailyRecords.set(currentDate, { status: "Present" });
+  } else if (attendance.dailyRecords.get(currentDate).status !== "Absent") {
+    // If already present, do nothing
     attendance.dailyRecords.set(currentDate, { status: "Present" });
   }
 
   this.markModified("monthlyAttendance");
   next();
 });
+
 
 module.exports = mongoose.model("User", userSchema);

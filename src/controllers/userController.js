@@ -189,30 +189,29 @@ exports.markAbsent = async (req, res) => {
     const currentDate = today.toISOString().split("T")[0]; // YYYY-MM-DD
 
     // Ensure monthlyAttendance exists
-    if (!user.monthlyAttendance[currentMonth]) {
-      user.monthlyAttendance[currentMonth] = {
+    if (!user.monthlyAttendance.has(currentMonth)) {
+      user.monthlyAttendance.set(currentMonth, {
         present: 0,
         absent: 0,
         totalWorkingDays: 26,
-        dailyRecords: {}, // Changed from Map to object for Mongoose compatibility
-      };
+        dailyRecords: new Map(),
+      });
     }
 
-    const attendance = user.monthlyAttendance[currentMonth];
+    const attendance = user.monthlyAttendance.get(currentMonth);
 
-    // Check if the user is already marked absent today
-    if (attendance.dailyRecords[currentDate]?.status === "Absent") {
+    // If the user is already absent today, do nothing
+    if (attendance.dailyRecords.has(currentDate) && attendance.dailyRecords.get(currentDate).status === "Absent") {
       return res.status(400).json({ message: "User is already marked absent for today." });
     }
 
-    // Mark absent
+    // Mark user absent
     attendance.absent += 1;
-    attendance.dailyRecords[currentDate] = { status: "Absent" };
+    attendance.dailyRecords.set(currentDate, { status: "Absent" });
 
-    // Decrease present count if applicable
+    // If the user was marked present, decrease present count
     if (attendance.present > 0) attendance.present -= 1;
 
-    // Notify Mongoose of the modified structure
     user.markModified("monthlyAttendance");
     await user.save();
 
@@ -226,6 +225,7 @@ exports.markAbsent = async (req, res) => {
     res.status(500).json({ message: "Error marking user absent", error: error.message });
   }
 };
+
 
 exports.getAttendanceReport = async (req, res) => {
   try {
