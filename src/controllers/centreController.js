@@ -518,6 +518,20 @@ exports.getPreviousThreeDaysSales = async (req, res) => {
   }
 };
 
+exports.getCentresWithDetails = async (req, res) => {
+  try {
+    const centres = await Centre.find()
+      .populate("branchId") // Populate full branch details
+      .populate("regionId") // Populate full region details
+      .lean();
+
+    res.json(centres);
+  } catch (error) {
+    console.error("Error fetching centres with full details:", error);
+    res.status(500).json({ message: "Error fetching centres", error: error.message });
+  }
+};
+
 // SSE Implementation
 exports.sseCentreUpdates = (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
