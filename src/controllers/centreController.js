@@ -180,7 +180,7 @@ exports.getMonthlyClientsByCentre = async (req, res) => {
 
 exports.getAllCentres = async (req, res) => {
   try {
-    const centres = await Centre.find().lean();
+    const centres = await Centre.find().populate("regionId").lean();
     res.json(centres);
   } catch (error) {
     res.status(500).json({ message: "Error fetching centres", error: error.message });
