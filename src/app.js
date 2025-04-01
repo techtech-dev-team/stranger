@@ -99,6 +99,7 @@ app.use("/game", gameRoutes);
 app.use("/api/vision", visionRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/expense", expenseRoutes);
+app.use("/api/visionid", visionIdRoutes);
 
 // Routes (Protected)
 app.use(protect);
@@ -106,7 +107,6 @@ app.use(protect);
 app.use("/api/admin", adminRoutes);
 app.use("/api/service", serviceRoutes);
 app.use("/api/reports", reportRoutes);
-app.use("/api/visionid", visionIdRoutes);
 app.use("/api/regions", regionRoutes);
 app.use("/api/branches", branchRoutes);
 app.use("/api/centres", centreRoutes);

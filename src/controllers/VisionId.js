@@ -92,23 +92,35 @@ exports.updateCustomerStatus = async (req, res) => {
         const { customerId } = req.params;
         const { status, remark, verified } = req.body;
 
-        const customer = await Customer.findByIdAndUpdate(
+        // Update the customer status
+        const updatedCustomer = await Customer.findByIdAndUpdate(
             customerId,
             { status, remark, verified },
             { new: true }
         );
 
-        if (!customer) return res.status(404).json({ message: 'Customer not found' });
+        if (!updatedCustomer) return res.status(404).json({ message: 'Customer not found' });
 
-        // Send SSE event
-        sendSSEEvent({ message: 'Customer status updated', customer });
+        // Populate the customer with the referenced fields
+        const populatedCustomer = await Customer.findById(updatedCustomer._id)
+            .populate('service')
+            .populate('staffAttending')
+            .populate('branchId')
+            .populate('centreId')
+            .populate('regionId')
+            .exec();
 
-        res.status(200).json({ message: 'Customer updated successfully', customer });
+        // Send the populated customer data via SSE
+        sendSSEEvent({ message: 'Customer status updated', populatedCustomer });
+
+        // Return populated customer in the response
+        res.status(200).json({ message: 'Customer updated successfully', populatedCustomer });
     } catch (error) {
         console.error('Error updating customer:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
+
 
 exports.getCustomerStatuses = async (req, res) => {
     try {

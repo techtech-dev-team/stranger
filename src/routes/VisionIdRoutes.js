@@ -7,6 +7,7 @@ router.get('/sse', sseHandler);
 
 // Fetch filtered data (customers & vision entries)
 router.get("/id-report", getIdReport);
+
 router.get('/statuses', getCustomerStatuses);
 
 // ✅ Route to update only 'status', 'remark', and 'verified' fields

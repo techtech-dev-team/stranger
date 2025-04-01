@@ -452,7 +452,18 @@ const editCustomer = async (req, res) => {
     await centre.save();
 
     const updatedCustomer = await Customer.findByIdAndUpdate(id, updates, { new: true });
+    
+    const populatedCustomer = await Customer.findById(updatedCustomer._id)
+    .populate('service')
+    .populate('staffAttending')
+    .populate('branchId')
+    .populate('centreId')
+    .populate('regionId')
+    .exec();
 
+  
+    sendSSEEvent({ message: "Customer updated", customer: populatedCustomer });
+    
     res.status(200).json({ message: "Customer updated successfully", customer: updatedCustomer });
   } catch (error) {
     console.error("Server Error:", error);
