@@ -140,7 +140,6 @@ exports.getUserById = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { role, centreIds } = req.user;
     const { branchIds, centreIds: newCentreIds, regionIds } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -150,12 +149,7 @@ exports.updateUser = async (req, res) => {
     let user = await User.findById(id);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    // Restrict Centre Manager access
-    if (role === "CM" && !user.centreIds.some(id => centreIds.includes(id.toString()))) {
-      return res.status(403).json({ message: "Access denied" });
-    }
 
-    // Update user details
     user.branchIds = branchIds;
     user.centreIds = newCentreIds;
     user.regionIds = regionIds;
