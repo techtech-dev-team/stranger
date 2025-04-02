@@ -388,7 +388,6 @@ const getCentreSalesReportDaily = async (req, res) => {
   }
 };
 
-
 const getCustomerById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -471,4 +470,36 @@ const editCustomer = async (req, res) => {
   }
 };
 
-module.exports = { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData };
+const getCustomersByCentre = async (req, res) => {
+  try {
+    const { centreId } = req.params;
+
+    // Validate centreId
+    if (!mongoose.isValidObjectId(centreId)) {
+      return res.status(400).json({ message: 'Invalid Centre ID' });
+    }
+
+    // Find customers belonging to the given centre
+    const customers = await Customer.find({ centreId })
+      .populate('service')
+      .populate('staffAttending')
+      .populate('branchId')
+      .populate('centreId')
+      .populate('regionId')
+      .exec();
+
+    if (!customers.length) {
+      return res.status(404).json({ message: 'No customers found for this centre' });
+    }
+
+    res.status(200).json({ message: 'Customers retrieved successfully', customers });
+  } catch (error) {
+    console.error('Error fetching customers by centre:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+
+
+
+module.exports = { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre};

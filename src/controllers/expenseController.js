@@ -107,3 +107,22 @@ exports.editExpense = async (req, res) => {
   }
 };
 
+// Get Expenses for a Specific Centre
+exports.getExpensesByCentre = async (req, res) => {
+  try {
+    const { centreId } = req.params;
+
+    const expenses = await Expense.find({ centreIds: centreId })
+      .populate('regionIds')
+      .populate('branchIds')
+      .populate('centreIds')
+      .sort({ expenseDate: -1 });
+
+    res.status(200).json(expenses);
+  } catch (error) {
+    console.error('Error fetching expenses by centre:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+
