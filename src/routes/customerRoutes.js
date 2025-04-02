@@ -10,7 +10,6 @@ router.get("/sales-graph", getSalesGraphData);
 
 router.post('/add', protect, addCustomer);
 
-// 🔹 Any authenticated user can list customers
 router.get('/list', protect, getCustomers);
 
 router.get('/centre-sales-report', protect, getCentreSalesReport);
@@ -19,7 +18,6 @@ router.get('/centre-sales-report-daily', protect, getCentreSalesReportDaily);
  
 router.get('/:id', protect, getCustomerById);
 
-// Edit customer by ID
 router.put('/:id', protect, editCustomer);
 
 module.exports = router;

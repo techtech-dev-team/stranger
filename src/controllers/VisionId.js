@@ -8,6 +8,13 @@ const moment = require("moment");
 const clients = []; // Store SSE clients
 
 // SSE Handler
+
+// Function to send SSE events
+const sendSSEEvent = (data) => {
+    clients.forEach(client => {
+        client.write(`data: ${JSON.stringify(data)}\n\n`);
+    });
+};
 exports.sseHandler = (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -21,12 +28,6 @@ exports.sseHandler = (req, res) => {
     });
 };
 
-// Function to send SSE events
-const sendSSEEvent = (data) => {
-    clients.forEach(client => {
-        client.write(`data: ${JSON.stringify(data)}\n\n`);
-    });
-};
 
 // ID Report API
 exports.getIdReport = async (req, res) => {
@@ -92,7 +93,6 @@ exports.updateCustomerStatus = async (req, res) => {
         const { customerId } = req.params;
         const { status, remark, verified } = req.body;
 
-        // Update the customer status
         const updatedCustomer = await Customer.findByIdAndUpdate(
             customerId,
             { status, remark, verified },
@@ -101,7 +101,6 @@ exports.updateCustomerStatus = async (req, res) => {
 
         if (!updatedCustomer) return res.status(404).json({ message: 'Customer not found' });
 
-        // Populate the customer with the referenced fields
         const populatedCustomer = await Customer.findById(updatedCustomer._id)
             .populate('service')
             .populate('staffAttending')
@@ -110,11 +109,11 @@ exports.updateCustomerStatus = async (req, res) => {
             .populate('regionId')
             .exec();
 
-        // Send the populated customer data via SSE
         sendSSEEvent({ message: 'Customer status updated', populatedCustomer });
+        console.log("populatedCustomer", populatedCustomer)
 
-        // Return populated customer in the response
         res.status(200).json({ message: 'Customer updated successfully', populatedCustomer });
+    
     } catch (error) {
         console.error('Error updating customer:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });

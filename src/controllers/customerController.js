@@ -461,8 +461,8 @@ const editCustomer = async (req, res) => {
     .populate('regionId')
     .exec();
 
-  
     sendSSEEvent({ message: "Customer updated", customer: populatedCustomer });
+    console.log("populatedCustomer",populatedCustomer);
     
     res.status(200).json({ message: "Customer updated successfully", customer: updatedCustomer });
   } catch (error) {
