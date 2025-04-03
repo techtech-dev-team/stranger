@@ -25,9 +25,9 @@ router.get("/monthly-clients", getMonthlyClientsByCentre);
 router.get("/combined-clients", getCombinedMonthlyClientsByCentre);
 router.get("/", getAllCentres);
 router.post("/", addCentre);
-router.get("/:id", getCentreById);
 router.get("/inactive/list", getInactiveCentres);
 router.get("/active/list", getActiveCentres);
+router.get("/:id", getCentreById);
 router.get("/report/:centerId", getCentreReport);
 router.get("/previous-three-days-sales/:centerId", getPreviousThreeDaysSales);
 

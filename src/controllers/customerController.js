@@ -7,7 +7,6 @@ const { login } = require('./userController');
 const clients = []; // Store SSE clients
 const moment = require('moment-timezone');
 
-
 const addCustomer = async (req, res) => {
   try {
     const {
@@ -498,8 +497,5 @@ const getCustomersByCentre = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-
-
 
 module.exports = { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre};

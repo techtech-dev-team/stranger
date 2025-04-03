@@ -52,7 +52,6 @@ app.options("*", cors());
 
 app.use(express.json()); // Middleware to parse JSON data
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded data
-app.use(refreshData);
 
 app.use(
     helmet({
