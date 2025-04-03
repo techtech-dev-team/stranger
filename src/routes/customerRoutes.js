@@ -16,9 +16,10 @@ router.get('/centre-sales-report', protect, getCentreSalesReport);
 
 router.get('/centre-sales-report-daily', protect, getCentreSalesReportDaily);
 
+router.get('/centre/:centreId', protect, getCustomersByCentre);
+
 router.put('/:id', protect, editCustomer);
 
-router.get('/centre/:centreId', protect, getCustomersByCentre);
 
 router.get('/:id', protect, getCustomerById);
 
