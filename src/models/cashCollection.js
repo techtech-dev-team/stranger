@@ -10,6 +10,8 @@ const cashCollectionSchema = new mongoose.Schema({
   amountReceivingDate: { type: Date, required: true },
   remark: { type: String, default: "" },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },  // Added userId field
+  OT: { type: String, default: "Unverified" }, // Add this line
+  RM: { type: String, default: "Unverified" }, // Add this line
   createdAt: { type: Date, default: Date.now },
 });
 

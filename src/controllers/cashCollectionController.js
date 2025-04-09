@@ -134,3 +134,35 @@ exports.getCashCollectionHistory = async (req, res) => {
     });
   }
 };
+
+exports.toggleVerificationStatus = async (req, res) => {
+  try {
+    const { id } = req.params; // CashCollection ID
+    const { field } = req.body; // 'OT' or 'RM'
+
+    if (!['OT', 'RM'].includes(field)) {
+      return res.status(400).json({ message: "Invalid field. Must be 'OT' or 'RM'." });
+    }
+
+    const entry = await CashCollection.findById(id);
+    if (!entry) {
+      return res.status(404).json({ message: "Cash collection entry not found." });
+    }
+
+    // Toggle the status
+    entry[field] = entry[field] === "Verified" ? "Unverified" : "Verified";
+    await entry.save();
+
+    res.status(200).json({
+      message: `${field} verification status toggled successfully.`,
+      data: {
+        id: entry._id,
+        field,
+        newStatus: entry[field],
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating verification status.", error: error.message });
+  }
+};
+
