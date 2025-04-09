@@ -45,34 +45,34 @@ const userSchema = new mongoose.Schema(
 );
 
 // Pre-save hook to increment present count every day if not absent
-userSchema.pre("save", function (next) {
-  const today = new Date();
-  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-  const currentDate = today.toISOString().split("T")[0]; // YYYY-MM-DD
+// userSchema.pre("save", function (next) {
+//   const today = new Date();
+//   const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+//   const currentDate = today.toISOString().split("T")[0]; // YYYY-MM-DD
 
-  if (!this.monthlyAttendance.has(currentMonth)) {
-    this.monthlyAttendance.set(currentMonth, {
-      present: 0,
-      absent: 0,
-      totalWorkingDays: 26,
-      dailyRecords: new Map(),
-    });
-  }
+//   if (!this.monthlyAttendance.has(currentMonth)) {
+//     this.monthlyAttendance.set(currentMonth, {
+//       present: 0,
+//       absent: 0,
+//       totalWorkingDays: 26,
+//       dailyRecords: new Map(),
+//     });
+//   }
 
-  const attendance = this.monthlyAttendance.get(currentMonth);
+//   const attendance = this.monthlyAttendance.get(currentMonth);
 
-  // Only auto-mark present if user is not already absent for today
-  if (!attendance.dailyRecords.has(currentDate)) {
-    attendance.present += 1;
-    attendance.dailyRecords.set(currentDate, { status: "Present" });
-  } else if (attendance.dailyRecords.get(currentDate).status !== "Absent") {
-    // If already present, do nothing
-    attendance.dailyRecords.set(currentDate, { status: "Present" });
-  }
+//   // Only auto-mark present if user is not already absent for today
+//   if (!attendance.dailyRecords.has(currentDate)) {
+//     attendance.present += 1;
+//     attendance.dailyRecords.set(currentDate, { status: "Present" });
+//   } else if (attendance.dailyRecords.get(currentDate).status !== "Absent") {
+//     // If already present, do nothing
+//     attendance.dailyRecords.set(currentDate, { status: "Present" });
+//   }
 
-  this.markModified("monthlyAttendance");
-  next();
-});
+//   this.markModified("monthlyAttendance");
+//   next();
+// });
 
 
 module.exports = mongoose.model("User", userSchema);

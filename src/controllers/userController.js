@@ -171,54 +171,54 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-exports.markAbsent = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const user = await User.findById(id);
+// exports.markAbsent = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const user = await User.findById(id);
 
-    if (!user) return res.status(404).json({ message: "User not found" });
+//     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const today = new Date();
-    const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`; // YYYY-MM
-    const currentDate = today.toISOString().split("T")[0]; // YYYY-MM-DD
+//     const today = new Date();
+//     const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`; // YYYY-MM
+//     const currentDate = today.toISOString().split("T")[0]; // YYYY-MM-DD
 
-    // Ensure monthlyAttendance exists
-    if (!user.monthlyAttendance.has(currentMonth)) {
-      user.monthlyAttendance.set(currentMonth, {
-        present: 0,
-        absent: 0,
-        totalWorkingDays: 26,
-        dailyRecords: new Map(),
-      });
-    }
+//     // Ensure monthlyAttendance exists
+//     if (!user.monthlyAttendance.has(currentMonth)) {
+//       user.monthlyAttendance.set(currentMonth, {
+//         present: 0,
+//         absent: 0,
+//         totalWorkingDays: 26,
+//         dailyRecords: new Map(),
+//       });
+//     }
 
-    const attendance = user.monthlyAttendance.get(currentMonth);
+//     const attendance = user.monthlyAttendance.get(currentMonth);
 
-    // If the user is already absent today, do nothing
-    if (attendance.dailyRecords.has(currentDate) && attendance.dailyRecords.get(currentDate).status === "Absent") {
-      return res.status(400).json({ message: "User is already marked absent for today." });
-    }
+//     // If the user is already absent today, do nothing
+//     if (attendance.dailyRecords.has(currentDate) && attendance.dailyRecords.get(currentDate).status === "Absent") {
+//       return res.status(400).json({ message: "User is already marked absent for today." });
+//     }
 
-    // Mark user absent
-    attendance.absent += 1;
-    attendance.dailyRecords.set(currentDate, { status: "Absent" });
+//     // Mark user absent
+//     attendance.absent += 1;
+//     attendance.dailyRecords.set(currentDate, { status: "Absent" });
 
-    // If the user was marked present, decrease present count
-    if (attendance.present > 0) attendance.present -= 1;
+//     // If the user was marked present, decrease present count
+//     if (attendance.present > 0) attendance.present -= 1;
 
-    user.markModified("monthlyAttendance");
-    await user.save();
+//     user.markModified("monthlyAttendance");
+//     await user.save();
 
-    res.json({
-      message: "User marked absent successfully",
-      month: currentMonth,
-      attendance,
-    });
+//     res.json({
+//       message: "User marked absent successfully",
+//       month: currentMonth,
+//       attendance,
+//     });
 
-  } catch (error) {
-    res.status(500).json({ message: "Error marking user absent", error: error.message });
-  }
-};
+//   } catch (error) {
+//     res.status(500).json({ message: "Error marking user absent", error: error.message });
+//   }
+// };
 
 
 exports.getAttendanceReport = async (req, res) => {
@@ -357,5 +357,56 @@ exports.deactivateUser = async (req, res) => {
     res
       .status(500)
       .json({ message: "Error changing user status", error: error.message });
+  }
+};
+
+exports.markPresent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id);
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const today = new Date();
+    const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+    const currentDate = today.toISOString().split("T")[0];
+
+    if (!user.monthlyAttendance.has(currentMonth)) {
+      user.monthlyAttendance.set(currentMonth, {
+        present: 0,
+        absent: 0,
+        totalWorkingDays: 26,
+        dailyRecords: new Map(),
+      });
+    }
+
+    const attendance = user.monthlyAttendance.get(currentMonth);
+
+    // Already marked Present
+    if (attendance.dailyRecords.has(currentDate) && attendance.dailyRecords.get(currentDate).status === "Present") {
+      return res.status(400).json({ message: "User is already marked present for today." });
+    }
+
+    // Update attendance
+    attendance.present += 1;
+
+    // If previously marked absent, adjust absent count
+    if (attendance.dailyRecords.has(currentDate) && attendance.dailyRecords.get(currentDate).status === "Absent") {
+      attendance.absent -= 1;
+    }
+
+    attendance.dailyRecords.set(currentDate, { status: "Present" });
+
+    user.markModified("monthlyAttendance");
+    await user.save();
+
+    res.json({
+      message: "User marked present successfully",
+      month: currentMonth,
+      attendance,
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Error marking user present", error: error.message });
   }
 };

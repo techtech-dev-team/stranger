@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getAllUsers, getUserById, getClubStaffUsers ,getPresentStaffByDate, registerUser, updateUser, deleteUser , login , markAbsent , getAttendanceReport, getMonthlyAttendanceReport , deactivateUser } = require("../controllers/userController");
+const { getAllUsers, getUserById, getClubStaffUsers ,getPresentStaffByDate, registerUser, updateUser, deleteUser , login  , getAttendanceReport, getMonthlyAttendanceReport , deactivateUser , markPresent } = require("../controllers/userController");
 
 // Routes
 router.get("/", getAllUsers);
@@ -11,9 +11,10 @@ router.get("/clubstaff", getClubStaffUsers);
 router.get("/:id", getUserById);
 router.put("/:id", updateUser); 
 router.delete("/:id", deleteUser);
-router.put("/:id/mark-absent", markAbsent);
 router.get("/:id/attendance", getAttendanceReport);
 router.get("/:id/attendance/:month", getMonthlyAttendanceReport);
 router.put("/:id/deactivate", deactivateUser);
+router.put("/:id/mark-present", markPresent);
+router
 
 module.exports = router;
