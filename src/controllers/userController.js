@@ -410,3 +410,45 @@ exports.markPresent = async (req, res) => {
     res.status(500).json({ message: "Error marking user present", error: error.message });
   }
 };
+
+exports.getPresentStaffToday = async (req, res) => {
+  try {
+    // If date not provided, use today's date
+    const today = new Date();
+    const date = req.query.date || today.toISOString().split("T")[0];
+
+    // Optional filters (if you want to allow filtering)
+    const { regionId, branchId, centreId } = req.query;
+    const query = {};
+    if (regionId && mongoose.isValidObjectId(regionId)) query.regionIds = regionId;
+    if (branchId && mongoose.isValidObjectId(branchId)) query.branchIds = branchId;
+    if (centreId && mongoose.isValidObjectId(centreId)) query.centreIds = centreId;
+
+    // Fetch staff
+    const allStaff = await User.find(query).select("name role monthlyAttendance");
+
+    const [year, month] = date.split("-");
+    const monthKey = `${year}-${month.padStart(2, "0")}`;
+
+    const presentStaff = allStaff.filter((user) => {
+      const attendance = user.monthlyAttendance.get(monthKey);
+      if (!attendance) return false;
+
+      const record = attendance.dailyRecords?.get(date);
+      return record?.status === "Present";
+    });
+
+    res.json({
+      message: "Present staff for today retrieved successfully",
+      date,
+      presentStaff,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching present staff",
+      error: error.message,
+    });
+  }
+};
+
