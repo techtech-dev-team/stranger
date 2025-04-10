@@ -23,8 +23,10 @@ const calculateSales = async (centreId, startDate, endDate) => {
       salesByDate[dateKey] = {
         totalCash: 0,
         totalOnline: 0,
+        totalCommission: 0, // ✅ Add this
       };
     }
+    
 
     const cash1 = cust.paymentCash1 || 0;
     const cash2 = cust.paymentCash2 || 0;
@@ -41,7 +43,7 @@ const calculateSales = async (centreId, startDate, endDate) => {
       salesByDate[dateKey].totalOnline += online1 + online2;
     }
 
-    salesByDate[dateKey].totalCommission += cashComm + onlineComm;
+    salesByDate[dateKey].totalCommission += cashComm + onlineComm; // NaN here!
   });
 
   // Format into array
@@ -49,7 +51,8 @@ const calculateSales = async (centreId, startDate, endDate) => {
     _id: date,
     ...salesByDate[date]
   }));
-
+  console.log('salesData', salesData);
+  
   return salesData;
 };
 

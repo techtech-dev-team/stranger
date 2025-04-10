@@ -70,14 +70,14 @@ exports.login = async (req, res) => {
 
     // ✅ Generate JWT Token
     const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
-    
+
     res.cookie("token", token, {
       httpOnly: true,  // Prevents client-side access
       secure: process.env.NODE_ENV === "production", // Enable secure mode in production
       sameSite: "Strict"
-  });
-    
-  res.status(200).json({
+    });
+
+    res.status(200).json({
       message: "Login successful",
       token,
       user: userPayload,
@@ -413,37 +413,45 @@ exports.markPresent = async (req, res) => {
 
 exports.getPresentStaffToday = async (req, res) => {
   try {
-    // If date not provided, use today's date
     const today = new Date();
     const date = req.query.date || today.toISOString().split("T")[0];
-
-    // Optional filters (if you want to allow filtering)
     const { regionId, branchId, centreId } = req.query;
+
     const query = {};
     if (regionId && mongoose.isValidObjectId(regionId)) query.regionIds = regionId;
     if (branchId && mongoose.isValidObjectId(branchId)) query.branchIds = branchId;
     if (centreId && mongoose.isValidObjectId(centreId)) query.centreIds = centreId;
 
-    // Fetch staff
-    const allStaff = await User.find(query).select("name role monthlyAttendance");
-
+    const allStaff = await User.find(query)
+      .select("name role mobileNumber monthlyAttendance centreIds")
+      .populate("centreIds", "centreId"); // Only fetch `centreId` from the `Centre` model
+      
     const [year, month] = date.split("-");
     const monthKey = `${year}-${month.padStart(2, "0")}`;
 
-    const presentStaff = allStaff.filter((user) => {
+    const presentStaff = allStaff.map((user) => {
       const attendance = user.monthlyAttendance.get(monthKey);
-      if (!attendance) return false;
+      if (!attendance) return null;
 
       const record = attendance.dailyRecords?.get(date);
-      return record?.status === "Present";
-    });
+      if (record?.status !== "Present") return null;
+
+      return {
+        _id: user._id,
+        name: user.name,
+        mobileNumber: user.mobileNumber,
+        centerId: user.centreIds?.[0]?.centreId || "N/A",
+        status: record.status,
+        inTime: record.inTime || "N/A",
+        outTime: record.outTime || "N/A",
+      };
+    }).filter(Boolean);
 
     res.json({
       message: "Present staff for today retrieved successfully",
       date,
       presentStaff,
     });
-
   } catch (error) {
     res.status(500).json({
       message: "Error fetching present staff",
