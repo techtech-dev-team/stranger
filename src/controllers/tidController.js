@@ -10,6 +10,13 @@ exports.addTIDEntry = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    // Check if the centreId already exists in the TID collection
+    const existingTID = await TID.findOne({ centreId });
+
+    if (existingTID) {
+      return res.status(400).json({ message: "This centre is already listed with TID numbers" });
+    }
+
     const newTID = new TID({ centreId, centreName, bankName, tidNumbers });
     await newTID.save();
 
@@ -24,6 +31,7 @@ exports.addTIDEntry = async (req, res) => {
     res.status(500).json({ message: "Error adding TID entry", error: error.message });
   }
 };
+
 
 
 // Get all TID entries
@@ -69,3 +77,13 @@ exports.deleteTIDEntry = async (req, res) => {
     res.status(500).json({ message: "Error deleting TID entry", error: error.message });
   }
 };
+
+exports.getTIDsByCentre = async (req, res) => {
+  try {
+    const { centreId } = req.params;
+    const tids = await TID.find({ centreId });
+    res.status(200).json(tids);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch TIDs", error });
+  }
+}

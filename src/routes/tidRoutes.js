@@ -5,6 +5,7 @@ const {
   getAllTIDs,
   updateTIDEntry,
   deleteTIDEntry,
+  getTIDsByCentre
 } = require("../controllers/tidController");
 
 // POST: Add new TID entry
@@ -18,5 +19,7 @@ router.put("/:id", updateTIDEntry);
 
 // DELETE: Delete TID entry
 router.delete("/:id", deleteTIDEntry);
+
+router.get("/by-centre/:centreId", getTIDsByCentre);
 
 module.exports = router;

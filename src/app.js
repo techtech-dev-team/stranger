@@ -102,7 +102,8 @@ app.use("/api/vision", visionRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/expense", expenseRoutes);
 app.use("/api/visionid", visionIdRoutes);
-
+app.use("/api/tids", tidRoutes);
+app.use("/api", transactionRoutes);
 // Routes (Protected)
 app.use(protect);
 // Refresh data before any API route is hit
@@ -117,7 +118,6 @@ app.use("/api/regions-branches-centres", regionBranchCentre); // ✅ Added regio
 app.use('/api/notifications', notificationRoutes);
 app.use("/api/sales", salesRoutes); // Base route for sales-related APIs
 app.use('/api/graph', graphRoutes);
-app.use("/api/tids", tidRoutes);
-app.use("/api", transactionRoutes);
+
 
 module.exports = app;
