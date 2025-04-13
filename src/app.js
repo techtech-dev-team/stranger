@@ -24,6 +24,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const salesRoutes = require("./routes/salesRoutes");
 const graphRoutes = require('./routes/graphRoutes');
 const tidRoutes = require("./routes/tidRoutes");
+const transactionRoutes = require("./routes/transactionRoutes");
 const sseRoutes = require("./routes/sseRoutes");
 const { refreshData } = require("./controllers/refreshController");
 const { checkMissedEntries } = require('./controllers/notificationController');
@@ -117,9 +118,6 @@ app.use('/api/notifications', notificationRoutes);
 app.use("/api/sales", salesRoutes); // Base route for sales-related APIs
 app.use('/api/graph', graphRoutes);
 app.use("/api/tids", tidRoutes);
-
-
-
-
+app.use("/api", transactionRoutes);
 
 module.exports = app;
