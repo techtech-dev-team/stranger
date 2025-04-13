@@ -23,6 +23,7 @@ const regionBranchCentre = require("./routes/regionBranchCentreRoutes"); // ✅ 
 const notificationRoutes = require('./routes/notificationRoutes');
 const salesRoutes = require("./routes/salesRoutes");
 const graphRoutes = require('./routes/graphRoutes');
+const tidRoutes = require("./routes/tidRoutes");
 const sseRoutes = require("./routes/sseRoutes");
 const { refreshData } = require("./controllers/refreshController");
 const { checkMissedEntries } = require('./controllers/notificationController');
@@ -115,6 +116,8 @@ app.use("/api/regions-branches-centres", regionBranchCentre); // ✅ Added regio
 app.use('/api/notifications', notificationRoutes);
 app.use("/api/sales", salesRoutes); // Base route for sales-related APIs
 app.use('/api/graph', graphRoutes);
+app.use("/api/tids", tidRoutes);
+
 
 
 
