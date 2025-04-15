@@ -12,7 +12,14 @@ const visionSchema = new mongoose.Schema({
   remark: {
     type: String,
     required: true,
-    enum: ['Customer', 'Suspicious / Issue', 'Client Issue', 'Staff Crowd', 'No CCTV Vision', 'Auto-generated']
+    enum: ["Customer",
+        "Suspicious / Issue",
+        "Client Issue",
+        "Staff Crowd",
+        "No CCTV Vision",
+        "Vendor",
+        "Clenaing",
+        "Maintenance",]
   },
   staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });
