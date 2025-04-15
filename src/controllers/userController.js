@@ -19,10 +19,10 @@ const getCurrentMonth = () => {
 
 exports.registerUser = async (req, res) => {
   try {
-    const { name, mobileNumber,email, role, branchIds, centreIds, regionIds, status } = req.body;
+    const { name, mobileNumber, email, role, branchIds, centreIds, regionIds, status } = req.body;
 
     // Check for existing user
-    const existingUser = await User.findOne({ mobileNumber });
+    const existingUser = await User.findOne({ $or: [{ mobileNumber }, { email }] });
     if (existingUser) return res.status(400).json({ message: "User already exists" });
 
     let loginId = null;
@@ -41,7 +41,7 @@ exports.registerUser = async (req, res) => {
     }
 
     const newUser = new User({
-      name, mobileNumber, role,email, branchIds, centreIds, regionIds, status, loginId, pin,
+      name, mobileNumber, email, role, branchIds, centreIds, regionIds, status, loginId, pin,
     });
 
     await newUser.save();
