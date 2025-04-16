@@ -298,6 +298,7 @@ exports.getCentreStatistics = async (req, res) => {
     const centreStats = centres.map(centre => ({
       centreId: centre._id,
       name: centre.name,
+      code: centre.centreId,
       balance: centre.balance,
       previousBalance: centre.previousBalance,
       shortCode: centre.shortCode,
