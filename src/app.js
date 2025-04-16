@@ -43,13 +43,12 @@ const app = express();
 connectDB();
 
 app.use(cors({
-    origin: function (origin, callback) {
-        callback(null, origin || "*"); // Allow requests from all origins
-    },
-    credentials: true, // Allow cookies/auth headers
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+  origin: true, // Reflects the request origin in Access-Control-Allow-Origin
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 }));
+
 app.use(cookieParser()); // Add this in your server.js
 app.options("*", cors());
 
