@@ -41,6 +41,41 @@ dotenv.config();
 const app = express();
 
 connectDB();
+let clients = [];
+
+app.get('/api/live-users', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  const clientId = Date.now();
+  const newClient = {
+    id: clientId,
+    res
+  };
+  clients.push(newClient);
+
+  req.on('close', () => {
+    clients = clients.filter(client => client.id !== clientId);
+  });
+});
+
+// Mock function to generate random user data
+function getLiveUsersByRole() {
+  const roles = ["CM", "ARM", "Vision", "ID", "BSS", "OT", "CT", "FM"];
+  const data = {};
+  roles.forEach(role => {
+    data[role] = Math.floor(Math.random() * 10); // Random count between 0-9
+  });
+  return data;
+}
+
+// Send updates to all connected clients every 3 seconds
+setInterval(() => {
+  const data = getLiveUsersByRole();
+  clients.forEach(client => client.res.write(`data: ${JSON.stringify(data)}\n\n`));
+}, 3000);
+
 
 app.use(cors({
     origin: function (origin, callback) {
