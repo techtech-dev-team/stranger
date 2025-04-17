@@ -13,8 +13,8 @@ const userSchema = new mongoose.Schema(
     centreIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Centre" }],
     regionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Region" }],
     name: { type: String, required: true },
-    mobileNumber: { type: String, required: true },
-    email: { type: String, unique: true },
+    mobileNumber: { type: String },
+    email: { type: String },
     status: {
       type: String,
       required: true,
