@@ -36,7 +36,7 @@ exports.registerUser = async (req, res) => {
     const cleanedCentreIds = centreIds.filter(id => id);
     const cleanedRegionIds = regionIds.filter(id => id);
 
-    // Fix status casing
+    // Fix status casing (ensure it's either 'Active' or 'Inactive')
     const formattedStatus =
       status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 
@@ -69,14 +69,13 @@ exports.registerUser = async (req, res) => {
       loginId,
       pin,
       role,
-      branchIds,
-      centreIds,
-      regionIds,
+      branchIds: cleanedBranchIds,
+      centreIds: cleanedCentreIds,
+      regionIds: cleanedRegionIds,
       name,
       mobileNumber,
       email,
-      status,
-      // This is key 👇
+      status: formattedStatus, // Ensure the status is properly formatted
       aadharOrPanNumber:
         aadharOrPanNumber && aadharOrPanNumber.trim() !== ""
           ? aadharOrPanNumber.trim()
@@ -95,7 +94,6 @@ exports.registerUser = async (req, res) => {
       .json({ message: "Error registering user", error: error.message });
   }
 };
-
 
 
 exports.login = async (req, res) => {
