@@ -19,11 +19,9 @@ const getCurrentMonth = () => {
 
 exports.registerUser = async (req, res) => {
   try {
-    const { name, mobileNumber, email, aadharOrPanNumber, role, branchIds, centreIds, regionIds, status } = req.body;
+    console.log("➡️ Incoming user registration data:", req.body);
 
-    // Check for existing user
-    // const existingUser = await User.findOne({ $or: [{ mobileNumber }] });
-    // if (existingUser) return res.status(400).json({ message: "User already exists" });
+    const { name, mobileNumber, email, aadharOrPanNumber, role, branchIds, centreIds, regionIds, status } = req.body;
 
     let loginId = null;
     let pin = null;
@@ -33,7 +31,6 @@ exports.registerUser = async (req, res) => {
       pin = generateRandom4Digit().toString();
     }
 
-    // Ensure CM is assigned only one branch, centre, and region
     if (role === "CM") {
       if (branchIds.length !== 1 || centreIds.length !== 1 || regionIds.length !== 1) {
         return res.status(400).json({ message: "Centre Managers must be assigned exactly one branch, centre, and region." });
@@ -41,15 +38,30 @@ exports.registerUser = async (req, res) => {
     }
 
     const newUser = new User({
-      name, mobileNumber, email, role, branchIds, aadharOrPanNumber, centreIds, regionIds, status, loginId, pin,
+      name,
+      mobileNumber,
+      email,
+      role,
+      branchIds,
+      aadharOrPanNumber,
+      centreIds,
+      regionIds,
+      status,
+      loginId,
+      pin,
     });
 
+    console.log("✅ New user object:", newUser);
+
     await newUser.save();
+
     res.status(201).json({ message: "User registered successfully", user: newUser });
   } catch (error) {
+    console.error("❌ Register User Error:", error); // Make sure this logs to terminal
     res.status(500).json({ message: "Error registering user", error: error.message });
   }
 };
+
 
 exports.login = async (req, res) => {
   try {
