@@ -41,7 +41,7 @@ exports.registerUser = async (req, res) => {
     }
 
     const newUser = new User({
-      name, mobileNumber, email, role, branchIds, centreIds, regionIds, status, loginId, pin,
+      name, mobileNumber, email, role, branchIds, aadharOrPanNumber, centreIds, regionIds, status, loginId, pin,
     });
 
     await newUser.save();
