@@ -13,7 +13,8 @@ const {
     getCentreReport,
     getPreviousThreeDaysSales,
     getCentresWithDetails,
-    sseCentreUpdates
+    sseCentreUpdates,
+    updateCentre
 } = require("../controllers/centreController");
 
 const router = express.Router();
@@ -30,7 +31,7 @@ router.get("/active/list", getActiveCentres);
 router.get("/:id", getCentreById);
 router.get("/report/:centerId", getCentreReport);
 router.get("/previous-three-days-sales/:centerId", getPreviousThreeDaysSales);
-
+router.put("/:id",updateCentre);
 router.get("/sse-updates", sseCentreUpdates); // SSE Route
 
 module.exports = router;

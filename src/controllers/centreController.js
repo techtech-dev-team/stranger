@@ -552,3 +552,42 @@ exports.sseCentreUpdates = (req, res) => {
   });
 };
 
+exports.updateCentre = async (req, res) => {
+  const { id } = req.params; // Centre ID from the request parameters
+  const { name, shortCode, centreId, branchName, payCriteria, regionId, branchId, status } = req.body;
+
+  try {
+    // Validate if ID is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid Centre ID" });
+    }
+
+    // Find the centre by ID and update its details
+    const updatedCentre = await Centre.findByIdAndUpdate(
+      id,
+      {
+        name,
+        shortCode,
+        centreId,
+        branchName,
+        payCriteria,
+        regionId,
+        branchId,
+        status
+      },
+      { new: true, runValidators: true } // Return the updated document and run validation
+    );
+
+    if (!updatedCentre) {
+      return res.status(404).json({ message: "Centre not found" });
+    }
+
+    // Notify SSE clients about the update
+    sseClients.forEach(client => client.res.write(`data: ${JSON.stringify({ event: "update-centre", centre: updatedCentre })}\n\n`));
+
+    res.status(200).json({ message: "Centre updated successfully", centre: updatedCentre });
+  } catch (error) {
+    console.error("Error updating centre:", error);
+    res.status(500).json({ message: "Error updating centre", error: error.message });
+  }
+};
