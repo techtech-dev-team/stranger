@@ -66,17 +66,21 @@ exports.registerUser = async (req, res) => {
     }
 
     const newUser = new User({
+      loginId,
+      pin,
+      role,
+      branchIds,
+      centreIds,
+      regionIds,
       name,
       mobileNumber,
       email,
-      role,
-      branchIds: cleanedBranchIds,
-      centreIds: cleanedCentreIds,
-      regionIds: cleanedRegionIds,
-      status: formattedStatus,
-      aadharOrPanNumber,
-      loginId,
-      pin,
+      status,
+      // This is key 👇
+      aadharOrPanNumber:
+        aadharOrPanNumber && aadharOrPanNumber.trim() !== ""
+          ? aadharOrPanNumber.trim()
+          : null,
     });
 
     await newUser.save();
