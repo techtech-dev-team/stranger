@@ -19,21 +19,49 @@ const getCurrentMonth = () => {
 
 exports.registerUser = async (req, res) => {
   try {
-    console.log("➡️ Incoming user registration data:", req.body);
+    const {
+      name,
+      mobileNumber,
+      email,
+      aadharOrPanNumber,
+      role,
+      branchIds = [],
+      centreIds = [],
+      regionIds = [],
+      status = "Active",
+    } = req.body;
 
-    const { name, mobileNumber, email, aadharOrPanNumber, role, branchIds, centreIds, regionIds, status } = req.body;
+    // Clean invalid ObjectIds (e.g. empty strings)
+    const cleanedBranchIds = branchIds.filter(id => id);
+    const cleanedCentreIds = centreIds.filter(id => id);
+    const cleanedRegionIds = regionIds.filter(id => id);
+
+    // Fix status casing
+    const formattedStatus =
+      status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 
     let loginId = null;
     let pin = null;
 
-    if (["CM", "ARM", "Vision", "ID", "BSS", "OT", "CT", "FM"].includes(role)) {
+    // Generate login credentials for allowed roles
+    if (
+      ["CM", "ARM", "Vision", "ID", "BSS", "OT", "CT", "FM"].includes(role)
+    ) {
       loginId = generateLoginId(role);
       pin = generateRandom4Digit().toString();
     }
 
+    // Enforce CM assignment rule
     if (role === "CM") {
-      if (branchIds.length !== 1 || centreIds.length !== 1 || regionIds.length !== 1) {
-        return res.status(400).json({ message: "Centre Managers must be assigned exactly one branch, centre, and region." });
+      if (
+        cleanedBranchIds.length !== 1 ||
+        cleanedCentreIds.length !== 1 ||
+        cleanedRegionIds.length !== 1
+      ) {
+        return res.status(400).json({
+          message:
+            "Centre Managers must be assigned exactly one branch, centre, and region.",
+        });
       }
     }
 
@@ -42,25 +70,28 @@ exports.registerUser = async (req, res) => {
       mobileNumber,
       email,
       role,
-      branchIds,
+      branchIds: cleanedBranchIds,
+      centreIds: cleanedCentreIds,
+      regionIds: cleanedRegionIds,
+      status: formattedStatus,
       aadharOrPanNumber,
-      centreIds,
-      regionIds,
-      status,
       loginId,
       pin,
     });
 
-    console.log("✅ New user object:", newUser);
-
     await newUser.save();
 
-    res.status(201).json({ message: "User registered successfully", user: newUser });
+    res
+      .status(201)
+      .json({ message: "User registered successfully", user: newUser });
   } catch (error) {
-    console.error("❌ Register User Error:", error); // Make sure this logs to terminal
-    res.status(500).json({ message: "Error registering user", error: error.message });
+    console.error("Register User Error:", error);
+    res
+      .status(500)
+      .json({ message: "Error registering user", error: error.message });
   }
 };
+
 
 
 exports.login = async (req, res) => {
