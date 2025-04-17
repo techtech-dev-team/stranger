@@ -21,7 +21,13 @@ const userSchema = new mongoose.Schema(
       enum: ["Active", "Inactive"],
       default: "Active",
     },
-    aadharOrPanNumber: { type: String },
+    aadharOrPanNumber: {
+      type: String,
+      unique: true,
+      sparse: true, // THIS is the magic
+      default: null,
+    }
+,    
 
     // Month-wise Attendance
     monthlyAttendance: {
