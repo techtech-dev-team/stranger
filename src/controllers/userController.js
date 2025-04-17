@@ -19,7 +19,7 @@ const getCurrentMonth = () => {
 
 exports.registerUser = async (req, res) => {
   try {
-    const { name, mobileNumber, email, role, branchIds, centreIds, regionIds, status } = req.body;
+    const { name, mobileNumber, email, aadharOrPanNumber, role, branchIds, centreIds, regionIds, status } = req.body;
 
     // Check for existing user
     // const existingUser = await User.findOne({ $or: [{ mobileNumber }] });
