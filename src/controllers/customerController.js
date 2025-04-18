@@ -431,10 +431,19 @@ const editCustomer = async (req, res) => {
     const now = new Date();
     const createdAt = new Date(existingCustomer.createdAt);
     const diff = now.getTime() - createdAt.getTime();
-    const minutes = Math.floor(diff / 60000); // Convert to minutes
+    const minutes = Math.floor(diff / 60000);
 
     if (minutes < 5) {
       return res.status(403).json({ message: "Customer can only be edited 5 minutes after checkout." });
+    }
+
+    // Convert service name to ObjectId if necessary
+    if (updates.service && typeof updates.service === "string") {
+      const serviceDoc = await Service.findOne({ name: updates.service.trim() });
+      if (!serviceDoc) {
+        return res.status(400).json({ message: "Invalid service name provided" });
+      }
+      updates.service = serviceDoc._id;
     }
 
     const centre = await Centre.findById(existingCustomer.centreId);
@@ -447,34 +456,35 @@ const editCustomer = async (req, res) => {
     let balanceUpdate = 0;
 
     if (centre.payCriteria === "plus") {
-      balanceUpdate = Number(updates.paymentCash2 || 0) + Number(updates.paymentOnline2 || 0) -
-        Number(updates.cashCommission || 0) - Number(updates.onlineCommission || 0);
+      balanceUpdate = Number(updates.paymentCash2 || 0) + Number(updates.paymentOnline2 || 0)
+        - Number(updates.cashCommission || 0) - Number(updates.onlineCommission || 0);
     } else if (centre.payCriteria === "minus") {
-      balanceUpdate = Number(updates.paymentOnline2 || 0) + Number(updates.paymentCash2 || 0)
+      balanceUpdate = Number(updates.paymentOnline2 || 0) + Number(updates.paymentCash2 || 0);
     }
 
     centre.balance += balanceUpdate;
     await centre.save();
 
     const updatedCustomer = await Customer.findByIdAndUpdate(id, updates, { new: true });
-    
+
     const populatedCustomer = await Customer.findById(updatedCustomer._id)
-    .populate('service')
-    .populate('staffAttending')
-    .populate('branchId')
-    .populate('centreId')
-    .populate('regionId')
-    .exec();
+      .populate('service')
+      .populate('staffAttending')
+      .populate('branchId')
+      .populate('centreId')
+      .populate('regionId')
+      .exec();
 
     sendSSEEvent({ message: "Customer updated", customer: populatedCustomer });
-    console.log("populatedCustomer",populatedCustomer);
-    
+    console.log("populatedCustomer", populatedCustomer);
+
     res.status(200).json({ message: "Customer updated successfully", customer: updatedCustomer });
   } catch (error) {
     console.error("Server Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 const getCustomersByCentre = async (req, res) => {
   try {
