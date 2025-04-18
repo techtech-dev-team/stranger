@@ -427,15 +427,22 @@ const editCustomer = async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
+    // Check if the customer can be edited (5 minutes after creation)
+    const now = new Date();
+    const createdAt = new Date(existingCustomer.createdAt);
+    const diff = now.getTime() - createdAt.getTime();
+    const minutes = Math.floor(diff / 60000); // Convert to minutes
+
+    if (minutes < 5) {
+      return res.status(403).json({ message: "Customer can only be edited 5 minutes after checkout." });
+    }
+
     const centre = await Centre.findById(existingCustomer.centreId);
     if (!centre) {
       return res.status(404).json({ message: "Centre not found" });
     }
 
     console.log("Centre Pay Criteria:", centre.payCriteria);
-
-    const newPaymentCash2 = Number(updates.paymentCash2) || 0;
-    const cashCommissionAmount = Number(updates.cashCommission) || 0;
 
     let balanceUpdate = 0;
 
@@ -497,5 +504,7 @@ const getCustomersByCentre = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+
 
 module.exports = { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre};
