@@ -1,6 +1,6 @@
 const express = require('express');
 const { protect } = require('../middleware/authMiddleware'); // Removed `authorize`
-const { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer,sseHandler, getCentreSalesReportDaily , getSalesGraphData , getCustomersByCentre } = require('../controllers/customerController');
+const { addCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer,sseHandler, getCentreSalesReportDaily , getSalesGraphData , getCustomersByCentre, updateCustomer } = require('../controllers/customerController');
 
 const router = express.Router();
 
@@ -20,7 +20,7 @@ router.get('/centre/:centreId', protect, getCustomersByCentre);
 
 router.put('/:id', protect, editCustomer);
 
-
+router.put('/update/:id', protect, updateCustomer);
 router.get('/:id', protect, getCustomerById);
 
 
