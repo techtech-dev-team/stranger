@@ -14,7 +14,8 @@ const {
     getPreviousThreeDaysSales,
     getCentresWithDetails,
     sseCentreUpdates,
-    updateCentre
+    updateCentre,
+    deleteCentreById
 } = require("../controllers/centreController");
 
 const router = express.Router();
@@ -32,6 +33,7 @@ router.get("/:id", getCentreById);
 router.get("/report/:centerId", getCentreReport);
 router.get("/previous-three-days-sales/:centerId", getPreviousThreeDaysSales);
 router.put("/:id",updateCentre);
+router.delete("/:id", deleteCentreById);
 router.get("/sse-updates", sseCentreUpdates); // SSE Route
 
 module.exports = router;

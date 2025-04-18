@@ -591,3 +591,29 @@ exports.updateCentre = async (req, res) => {
     res.status(500).json({ message: "Error updating centre", error: error.message });
   }
 };
+
+exports.deleteCentreById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate if ID is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid Centre ID" });
+    }
+
+    // Find and delete the centre by ID
+    const deletedCentre = await Centre.findByIdAndDelete(id);
+
+    if (!deletedCentre) {
+      return res.status(404).json({ message: "Centre not found" });
+    }
+
+    // Notify SSE clients about the deletion
+    sseClients.forEach(client => client.res.write(`data: ${JSON.stringify({ event: "delete-centre", centreId: id })}\n\n`));
+
+    res.status(200).json({ message: "Centre deleted successfully", centre: deletedCentre });
+  } catch (error) {
+    console.error("Error deleting centre:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
