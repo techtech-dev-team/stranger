@@ -502,7 +502,7 @@ const updateCustomer = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    console.log(updates);
+    console.log("Update Payload:", updates);
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid customer ID" });
@@ -518,10 +518,12 @@ const updateCustomer = async (req, res) => {
     const createdAt = new Date(existingCustomer.createdAt);
     const diff = now.getTime() - createdAt.getTime();
     const minutes = Math.floor(diff / 60000);
+    console.log(`Customer created ${minutes} minutes ago`);
 
-    if (minutes < 5) {
-      return res.status(403).json({ message: "Customer can only be edited 5 minutes after checkout." });
-    }
+    // 👉 Temporarily disabled this condition for flexibility
+    // if (minutes < 5) {
+    //   return res.status(403).json({ message: "Customer can only be edited 5 minutes after checkout." });
+    // }
 
     // Convert service name to ObjectId if necessary
     if (updates.service && typeof updates.service === "string") {
@@ -540,7 +542,6 @@ const updateCustomer = async (req, res) => {
     console.log("Centre Pay Criteria:", centre.payCriteria);
 
     let balanceUpdate = 0;
-
     if (centre.payCriteria === "plus") {
       balanceUpdate = Number(updates.paymentCash2 || 0) + Number(updates.paymentOnline2 || 0)
         - Number(updates.cashCommission || 0) - Number(updates.onlineCommission || 0);
@@ -570,6 +571,7 @@ const updateCustomer = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 
 
