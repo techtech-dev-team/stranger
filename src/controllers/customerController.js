@@ -365,7 +365,6 @@ const getCentreSalesReportDaily = async (req, res) => {
         centreId: centre._id,
         centreName: centre.name,
         centreCode: centre.centreId,
-        branchName: centre.branchName, // added branchName
         payCriteria,
         balance,
         totalCash: reportData.totalCash,
