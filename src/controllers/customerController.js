@@ -206,6 +206,7 @@ const getCentreSalesReport = async (req, res) => {
         totalOnline: salesReport[0]?.totalOnline || 0,
         totalSales: salesReport[0]?.grandTotal || 0,
         totalCustomers: salesReport[0]?.totalCustomers || 0, // Added customer count
+        branchName: centre.branchName,
         salesReport
       });
     }
@@ -365,6 +366,7 @@ const getCentreSalesReportDaily = async (req, res) => {
         centreId: centre._id,
         centreName: centre.name,
         centreCode: centre.centreId,
+        branchName: centre.branchName, // added branchName
         payCriteria,
         balance,
         totalCash: reportData.totalCash,
