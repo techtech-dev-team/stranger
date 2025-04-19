@@ -29,6 +29,7 @@ const sseRoutes = require("./routes/sseRoutes");
 const { refreshData } = require("./controllers/refreshController");
 const { checkMissedEntries } = require('./controllers/notificationController');
 const helmet = require("helmet");
+const masterController = require("./routes/masterRoute");
 
 
 setInterval(checkMissedEntries, 60 * 1000);
@@ -76,7 +77,7 @@ app.use(
     })
   );
 
-   
+ 
 app.use("/api/sse", sseRoutes);
 app.use("/api/users", userRoutes);
 app.use("/game", gameRoutes);
@@ -100,6 +101,6 @@ app.use("/api/regions-branches-centres", regionBranchCentre); // ✅ Added regio
 app.use('/api/notifications', notificationRoutes);
 app.use("/api/sales", salesRoutes); // Base route for sales-related APIs
 app.use('/api/graph', graphRoutes);
-
-
+ // Master admin route
+ app.use("/api/master", masterController); 
 module.exports = app;
