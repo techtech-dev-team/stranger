@@ -6,7 +6,6 @@ const Centre = require('../models/Centre');
 const { login } = require('./userController');
 const clients = []; // Store SSE clients
 const moment = require('moment-timezone');
-
 const addCustomer = async (req, res) => {
   try {
     const {
@@ -219,6 +218,7 @@ const getCentreSalesReport = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 const getSalesGraphData = async (req, res) => {
   try {
     const { centreId } = req.query;
@@ -572,8 +572,66 @@ const updateCustomer = async (req, res) => {
   }
 };
 
+const getDashboardBlocks = async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
 
+    // 1. Today's customers count
+    const todaysCustomers = await Customer.countDocuments({
+      createdAt: { $gte: today, $lt: tomorrow }
+    });
 
+    // 2. Total online, cash, collection and commission
+    const allCustomers = await Customer.find({ createdAt: { $gte: today, $lt: tomorrow } });
 
-module.exports = { addCustomer, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre};
+    let totalOnline = 0;
+    let totalCash = 0;
+    let totalCommission = 0;
+
+    allCustomers.forEach(customer => {
+      totalOnline += (customer.paymentOnline1 || 0) + (customer.paymentOnline2 || 0);
+      totalCash += (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
+      totalCommission += (customer.cashCommission || 0) + (customer.onlineCommission || 0);
+    });
+
+    const totalCollection = totalOnline + totalCash;
+
+    // 3. Staff Attendance
+    const staffList = await User.find({ role: "ClubStaff" });
+
+    let presentStaffCount = 0;
+    const todayDateString = today.toISOString().split('T')[0]; // "2025-04-19"
+
+    staffList.forEach(staff => {
+      const attendance = staff.monthlyAttendance || {};
+      if (attendance[todayDateString]) {
+        presentStaffCount++;
+      }
+    });
+
+    const activeCentersCount = await Centre.countDocuments({ status: "active" });
+    const inactiveCentersCount = await Centre.countDocuments({ status: "inactive" });
+
+    const blocksData = [
+      { id: 1, title: "Today's Customers", value: todaysCustomers, section: "customers" },
+      { id: 2, title: "Staff Present Today", value: presentStaffCount, section: "staff-attendance" },
+      { id: 3, title: "Online Collection", value: `${totalOnline} Rs`, section: "online-collection" },
+      { id: 4, title: "Cash Collection", value: `${totalCash} Rs`, section: "cash-collection" },
+      { id: 5, title: "Total Collection", value: `${totalCollection} Rs`, section: "total-collection" },
+      { id: 6, title: "Commission", value: `${totalCommission} Rs`, section: "commission" },
+      { id: 7, title: "Active Centers", value: activeCentersCount, section: "center-active" },
+      { id: 8, title: "Inactive Centers", value: inactiveCentersCount, section: "center-inactive" }
+    ];
+    res.status(200).json(blocksData);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+module.exports = { getDashboardBlocks ,addCustomer, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre};
