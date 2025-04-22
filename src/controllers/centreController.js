@@ -624,8 +624,8 @@ exports.getTodayZeroEntryCentresCount = async (req, res) => {
     const todayEnd = moment().tz("Asia/Kolkata").endOf("day").toDate();
 
    
-    // Fetch all centres
-    const centres = await Centre.find();
+    // Fetch all centres and populate the regionId
+    const centres = await Centre.find().populate('regionId', 'name');
     if (!centres.length) {
       return res.status(404).json({ message: "No centres found" });
     }
