@@ -15,12 +15,14 @@ const {
     getCentresWithDetails,
     sseCentreUpdates,
     updateCentre,
-    deleteCentreById
+    deleteCentreById,
+    getTodayZeroEntryCentresCount
 } = require("../controllers/centreController");
 
 const router = express.Router();
 router.get("/full", getCentresWithDetails);
 router.get("/centre-stats", getCentreStatistics);
+router.get('/zero-entry-centres', getTodayZeroEntryCentresCount);
 router.get("/monthly-sales", getMonthlySalesByCentre);
 router.get("/combined-sales", getCombinedMonthlySalesByCentre);
 router.get("/monthly-clients", getMonthlyClientsByCentre);

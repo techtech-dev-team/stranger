@@ -617,3 +617,47 @@ exports.deleteCentreById = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+exports.getTodayZeroEntryCentresCount = async (req, res) => {
+  try {
+    const todayStart = moment().tz("Asia/Kolkata").startOf("day").toDate();
+    const todayEnd = moment().tz("Asia/Kolkata").endOf("day").toDate();
+
+   
+    // Fetch all centres
+    const centres = await Centre.find();
+    if (!centres.length) {
+      return res.status(404).json({ message: "No centres found" });
+    }
+
+    const rawActiveCentreIds = await Customer.distinct("centreId", {
+      createdAt: { $gte: todayStart, $lt: todayEnd },
+    });
+    const activeCentreIds = rawActiveCentreIds.map(id => id.toString());
+
+
+    //  Split active and inactive centres
+    const activeCentres = centres.filter(centre =>
+      activeCentreIds.includes(centre._id.toString())
+    );
+
+    const inactiveCentres = centres.filter(centre =>
+      !activeCentreIds.includes(centre._id.toString())
+    );
+
+    res.status(200).json({
+      message: "Fetched today's centre activity successfully",
+      date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
+      activeCentreCount: activeCentres.length,
+      inactiveCentreCount: inactiveCentres.length,
+      activeCentres,
+      inactiveCentres
+    });
+
+  } catch (error) {
+    console.error(" Error in getTodayZeroEntryCentresCount:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
