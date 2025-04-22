@@ -1,5 +1,5 @@
 const express = require('express');
-const { addEntry, getAllEntries, getEntryById, updateEntry, deleteEntry , getVisionReport, sseHandler  } = require('../controllers/visionController');
+const { addEntry, getAllEntries, getEntryById, updateEntry, deleteEntry ,getTodayVisionReport, getVisionReport, sseHandler  } = require('../controllers/visionController');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/sse', sseHandler);
 
 router.get("/report", protect, getVisionReport);
-
+router.get("/report/today",protect, getTodayVisionReport);
 // ✅ Add a new entry (Logged-in user required)
 router.post('/add', protect, addEntry);
 
