@@ -505,3 +505,15 @@ exports.getPresentStaffToday = async (req, res) => {
   }
 };
 
+exports.getVisionUsers = async (req, res) => {
+  try {
+    const visionUsers = await User.find({ role: "Vision" })
+      .populate("branchIds")
+      .populate("centreIds")
+      .populate("regionIds");
+
+    res.json(visionUsers);
+  } catch (error) {
+    res.status(500).json({ message: "Error retrieving Vision users", error: error.message });
+  }
+};
