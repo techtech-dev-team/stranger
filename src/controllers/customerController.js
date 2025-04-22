@@ -636,4 +636,24 @@ const getDashboardBlocks = async (req, res) => {
   }
 };
 
-module.exports = { getDashboardBlocks ,addCustomer, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre};
+const getFilteredCustomers = async (_, res) => {
+  console.log("🔥 getFilteredCustomers called");
+  try {
+    const customers = await Customer.find({
+      status: { $nin: ["All ok", "null"] }
+    })
+      .populate('service')
+      .populate('staffAttending')
+      .populate('branchId')
+      .populate('centreId')
+      .populate('regionId')
+      .exec();
+  
+    res.status(200).json(customers);
+  } catch (error) {
+    console.error("🔥 Error during customer fetch:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};  
+
+module.exports = {getDashboardBlocks ,addCustomer, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers};
