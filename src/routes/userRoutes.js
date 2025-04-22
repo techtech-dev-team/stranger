@@ -1,10 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const { getAllUsers, getUserById, getClubStaffUsers ,getPresentStaffByDate, registerUser, updateUser, deleteUser , getVisionUsers,login  , getAttendanceReport, getMonthlyAttendanceReport , deactivateUser , markPresent , getPresentStaffToday } = require("../controllers/userController");
+const { getAllUsers, getUserById, getClubStaffUsers ,getPresentStaffByDate, registerUser, updateUser, deleteUser ,getIDUsers, getVisionUsers,login  , getAttendanceReport, getMonthlyAttendanceReport , deactivateUser , markPresent , getPresentStaffToday } = require("../controllers/userController");
 
 // Routes
 router.get("/", getAllUsers);
 router.get('/vision-users',getVisionUsers);
+router.get('/id-users', getIDUsers);
 router.get("/present", getPresentStaffByDate);
 router.post("/register", registerUser);
 router.post("/login", login);

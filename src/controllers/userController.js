@@ -518,3 +518,17 @@ exports.getVisionUsers = async (req, res) => {
     res.status(500).json({ message: "Error retrieving Vision users", error: error.message });
   }
 };
+
+exports.getIDUsers = async (req, res) => {
+  try {
+    const idUsers = await User.find({ role: "ID" })
+      .populate("branchIds")
+      .populate("centreIds")
+      .populate("regionIds");
+
+    res.status(200).json(idUsers);
+  } catch (error) {
+    console.error("Error retrieving ID users:", error);
+    res.status(500).json({ message: "Error retrieving ID users", error: error.message });
+  }
+};
