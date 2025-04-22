@@ -582,14 +582,26 @@ const getDashboardBlocks = async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
 
-    // 1. Today's customers count
-    const todaysCustomers = await Customer.countDocuments({
-      createdAt: { $gte: today, $lt: tomorrow }
-    });
+    const dateRangeQuery = { createdAt: { $gte: today, $lt: tomorrow } };
 
-    // 2. Total online, cash, collection and commission
-    const allCustomers = await Customer.find({ createdAt: { $gte: today, $lt: tomorrow } });
+    // Run all DB calls in parallel
+    const [
+      todaysCustomers,
+      allCustomers,
+      staffList,
+      activeCentersCount,
+      inactiveCentersCount
+    ] = await Promise.all([
+      Customer.countDocuments(dateRangeQuery),
+      Customer.find(dateRangeQuery).select(
+        'paymentOnline1 paymentOnline2 paymentCash1 paymentCash2 cashCommission onlineCommission'
+      ),
+      User.find({ role: "ClubStaff" }).select('monthlyAttendance'),
+      Centre.countDocuments({ status: "active" }),
+      Centre.countDocuments({ status: "inactive" })
+    ]);
 
+    // Calculate totals
     let totalOnline = 0;
     let totalCash = 0;
     let totalCommission = 0;
@@ -602,22 +614,16 @@ const getDashboardBlocks = async (req, res) => {
 
     const totalCollection = totalOnline + totalCash;
 
-    // 3. Staff Attendance
-    const staffList = await User.find({ role: "ClubStaff" });
+    // Format today's date as string
+    const todayDateString = today.toISOString().split('T')[0];
 
-    let presentStaffCount = 0;
-    const todayDateString = today.toISOString().split('T')[0]; // "2025-04-19"
-
-    staffList.forEach(staff => {
+    // Count staff present today
+    const presentStaffCount = staffList.filter(staff => {
       const attendance = staff.monthlyAttendance || {};
-      if (attendance[todayDateString]) {
-        presentStaffCount++;
-      }
-    });
+      return attendance[todayDateString];
+    }).length;
 
-    const activeCentersCount = await Centre.countDocuments({ status: "active" });
-    const inactiveCentersCount = await Centre.countDocuments({ status: "inactive" });
-
+    // Prepare dashboard blocks
     const blocksData = [
       { id: 1, title: "Today's Customers", value: todaysCustomers, section: "customers" },
       { id: 2, title: "Staff Present Today", value: presentStaffCount, section: "staff-attendance" },
@@ -628,13 +634,15 @@ const getDashboardBlocks = async (req, res) => {
       { id: 7, title: "All Centers", value: activeCentersCount, section: "center-active" },
       { id: 8, title: "Inactive Centers", value: inactiveCentersCount, section: "center-inactive" }
     ];
+
     res.status(200).json(blocksData);
 
   } catch (error) {
-    console.error(error);
+    console.error("Error in getDashboardBlocks:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
+
 
 const getFilteredCustomers = async (_, res) => {
   console.log("🔥 getFilteredCustomers called");
