@@ -4,6 +4,7 @@ const { getAllUsers, getUserById, getClubStaffUsers ,getPresentStaffByDate, regi
 
 // Routes
 router.get("/", getAllUsers);
+router.get('/vision-users',getVisionUsers);
 router.get("/present", getPresentStaffByDate);
 router.post("/register", registerUser);
 router.post("/login", login);
@@ -16,5 +17,4 @@ router.get("/:id/attendance/:month", getMonthlyAttendanceReport);
 router.put("/:id/deactivate", deactivateUser);
 router.put("/:id/mark-present", markPresent);
 router.get("/present/today", getPresentStaffToday);
-router.get('/vision-users', getVisionUsers);
 module.exports = router;
