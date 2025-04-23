@@ -132,8 +132,12 @@ const getCustomersFast = async (req, res) => {
       createdAt: { $gte: startOfDay, $lte: endOfDay }
     })
       .sort({ createdAt: -1 })
-      .select('name phone createdAt service staffAttending') // pick only what you *really* need
-      .lean();
+      .populate('service', '-__v')
+      .populate('staffAttending', '-__v')
+      .populate('branchId', '-__v')
+      .populate('centreId', '-__v')
+      .populate('regionId', '-__v')
+      .lean(); // Optional: lean() makes it faster but drops virtuals/getters
 
     console.timeEnd("query");
 
@@ -147,6 +151,7 @@ const getCustomersFast = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 
 
