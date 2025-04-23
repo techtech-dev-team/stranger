@@ -417,27 +417,22 @@ exports.getCentreReport = async (req, res) => {
           grandTotal: {
             $cond: {
               if: { $eq: [center.payCriteria, "plus"] },
-              then: {
-                $subtract: [
-                  { $add: ["$totalCash", "$totalOnline"] },
-                  "$totalCommission"
-                ]
-              },
+              then:
+                { $add: ["$totalCash", "$totalOnline"] }
+              ,
               else: { $add: ["$totalCash", "$totalOnline"] }
             }
           },
-          balance: {
-            $cond: {
-              if: { $eq: [center.payCriteria, "plus"] },
-              then: { $subtract: ["$totalCash", "$totalCashCommission"] },
-              else: "$totalCash"
-            }
-          }
+          // balance: {
+          //   $cond: {
+          //     if: { $eq: [center.payCriteria, "plus"] },
+          //     then: { $subtract: ["$totalCash", "$totalCashCommission"] },
+          //     else: "$totalCash"
+          //   }
+          // }
         }
       }
     ]);
-
-    let balance = center.previousBalance + center.balance || 0;
 
     const customers = await Customer.find(matchCondition)
       .populate("service", "name price")  // Populating service details
@@ -457,6 +452,20 @@ exports.getCentreReport = async (req, res) => {
 
     const expenses = await Expense.find(expenseMatchCondition).lean();
     const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
+    const totalOnline = salesReport.length > 0 ? salesReport[0].totalOnline : 0;
+
+    const totalSales = salesReport.length > 0 ? salesReport[0].grandTotal : 0;
+    const onlineCommission = salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0;
+    const cashCommission = salesReport.length > 0 ? salesReport[0].totalCashCommission : 0; // <-- ADD THIS
+
+    const balance = totalSales - totalExpense - totalOnline;
+
+    let finalTotal;
+    if (center.payCriteria === "plus") {
+      finalTotal = balance + cashCommission;
+    } else {
+      finalTotal = balance - cashCommission;
+    }
 
     res.status(200).json({
       success: true,
@@ -474,7 +483,8 @@ exports.getCentreReport = async (req, res) => {
         centerDetails: center,
         customers,
         expenses,
-        salesReport
+        salesReport,
+        finalTotal
       }
     });
 
@@ -623,7 +633,7 @@ exports.getTodayZeroEntryCentresCount = async (req, res) => {
     const todayStart = moment().tz("Asia/Kolkata").startOf("day").toDate();
     const todayEnd = moment().tz("Asia/Kolkata").endOf("day").toDate();
 
-   
+
     // Fetch all centres and populate the regionId
     const centres = await Centre.find().populate('regionId', 'name');
     if (!centres.length) {
