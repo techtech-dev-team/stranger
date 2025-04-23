@@ -116,18 +116,19 @@ const sseHandler = (req, res) => {
 const getCustomersFast = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 30; // You can tweak this if needed
+    const limit = parseInt(req.query.limit) || 30;
     const skip = (page - 1) * limit;
 
     const customers = await Customer.find()
-      .populate({ path: 'service', select: '-__v' }) // All fields except version
+      .sort({ createdAt: -1 }) // 👈 Sort by newest first
+      .populate({ path: 'service', select: '-__v' })
       .populate({ path: 'staffAttending', select: '-__v' })
       .populate({ path: 'branchId', select: '-__v' })
       .populate({ path: 'centreId', select: '-__v' })
       .populate({ path: 'regionId', select: '-__v' })
       .skip(skip)
       .limit(limit)
-      .lean(); 
+      .lean();
 
     res.status(200).json({
       page,
@@ -140,6 +141,7 @@ const getCustomersFast = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 
 
