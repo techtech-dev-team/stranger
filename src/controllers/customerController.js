@@ -904,14 +904,19 @@ const getRecentCustomersByCentreId = async (req, res) => {
       return res.status(400).json({ message: 'Invalid Centre ID' });
     }
 
-    // Calculate the date 3 days ago
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    // Calculate date from 2 days ago at 00:00:00 to today at 23:59:59
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - 2);
+    startDate.setHours(0, 0, 0, 0);
 
-    // Fetch customers created in last 3 days for this centre
+    const endDate = new Date(today);
+    endDate.setHours(23, 59, 59, 999);
+
+    // Fetch customers created between startDate and endDate
     const recentCustomers = await Customer.find({
       centreId,
-      createdAt: { $gte: threeDaysAgo }
+      createdAt: { $gte: startDate, $lte: endDate }
     })
       .populate('service')
       .populate('staffAttending')
@@ -930,6 +935,7 @@ const getRecentCustomersByCentreId = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 
 
