@@ -1,6 +1,6 @@
 const express = require('express');
 const { protect } = require('../middleware/authMiddleware'); // Removed `authorize`
-const {getDashboardBlocks, addCustomer, getCustomers,getCustomersFast, getCentreSalesReport, getFilteredCustomers, getCustomerById, editCustomer,sseHandler, getCentreSalesReportDaily , getSalesGraphData , getCustomersByCentre, updateCustomer } = require('../controllers/customerController');
+const {getDashboardBlocks, addCustomer, getCustomers,getRecentCustomersByCentreId,getCustomersFast, getCentreSalesReport, getFilteredCustomers, getCustomerById, editCustomer,sseHandler, getCentreSalesReportDaily , getSalesGraphData , getCustomersByCentre, updateCustomer } = require('../controllers/customerController');
 
 const router = express.Router();
 
@@ -13,6 +13,7 @@ router.get("/sales-graph", getSalesGraphData);
 router.post('/add', protect, addCustomer);
 
 router.get('/list', protect, getCustomers);
+router.get('/:centreId/recent-customers', getRecentCustomersByCentreId);
 
 router.get('/filtered-customers', getFilteredCustomers);
 

@@ -895,4 +895,42 @@ const getFilteredCustomers = async (_, res) => {
   }
 };  
 
-module.exports = {getDashboardBlocks ,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers};
+const getRecentCustomersByCentreId = async (req, res) => {
+  try {
+    const { centreId } = req.params;
+
+    // Validate centreId
+    if (!mongoose.isValidObjectId(centreId)) {
+      return res.status(400).json({ message: 'Invalid Centre ID' });
+    }
+
+    // Calculate the date 3 days ago
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    // Fetch customers created in last 3 days for this centre
+    const recentCustomers = await Customer.find({
+      centreId,
+      createdAt: { $gte: threeDaysAgo }
+    })
+      .populate('service')
+      .populate('staffAttending')
+      .populate('branchId')
+      .populate('centreId')
+      .populate('regionId')
+      .exec();
+
+    if (!recentCustomers.length) {
+      return res.status(404).json({ message: 'No recent customers found for this centre' });
+    }
+
+    res.status(200).json({ message: 'Recent customers retrieved successfully', customers: recentCustomers });
+  } catch (error) {
+    console.error('Error fetching recent customers by centre:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+
+
+module.exports = {getDashboardBlocks ,getRecentCustomersByCentreId ,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers};
