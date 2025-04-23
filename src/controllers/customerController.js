@@ -113,26 +113,32 @@ const sseHandler = (req, res) => {
     clients.splice(clients.indexOf(res), 1);
   });
 };
+
 const getCustomersFast = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 30;
-    const skip = (page - 1) * limit;
+    const { date } = req.query;
 
-    const customers = await Customer.find()
-      .sort({ createdAt: -1 }) // 👈 Sort by newest first
-      .populate({ path: 'service', select: '-__v' })
-      .populate({ path: 'staffAttending', select: '-__v' })
-      .populate({ path: 'branchId', select: '-__v' })
-      .populate({ path: 'centreId', select: '-__v' })
-      .populate({ path: 'regionId', select: '-__v' })
-      .skip(skip)
-      .limit(limit)
+    if (!date) {
+      return res.status(400).json({ message: 'Date is required in YYYY-MM-DD format' });
+    }
+
+    const startOfDay = new Date(date);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    console.time("query");
+
+    const customers = await Customer.find({
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    })
+      .sort({ createdAt: -1 })
+      .select('name phone createdAt service staffAttending') // pick only what you *really* need
       .lean();
 
+    console.timeEnd("query");
+
     res.status(200).json({
-      page,
-      limit,
+      date,
       count: customers.length,
       customers,
     });
@@ -141,6 +147,8 @@ const getCustomersFast = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+
 
 
 
