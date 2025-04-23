@@ -86,32 +86,41 @@ exports.getAllEntries = async (req, res) => {
 
 exports.getAllEntriesFast = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
+    const { date } = req.query;
 
-    // Optimized query: paginated, sorted, lean for speed
-    const entries = await Vision.find()
+    if (!date) {
+      return res.status(400).json({ message: "Date is required in YYYY-MM-DD format" });
+    }
+
+    const startOfDay = new Date(date);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    console.time("entries-query");
+
+    const entries = await Vision.find({
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    })
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(); // lean makes it faster by skipping mongoose document wrapping
+      .lean();
+
+    console.timeEnd("entries-query");
 
     if (!entries.length) {
-      return res.status(404).json({ message: "No entries found" });
+      return res.status(404).json({ message: "No entries found for this date" });
     }
 
     res.status(200).json({
-      page,
-      limit,
+      date,
       count: entries.length,
       entries,
     });
   } catch (error) {
-    console.error("Error fetching entries:", error);
+    console.error("❌ Error fetching entries:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 // ✅ Get a single entry by ID
 exports.getEntryById = async (req, res) => {
