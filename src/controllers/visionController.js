@@ -69,22 +69,22 @@ exports.addEntry = async (req, res) => {
   }
 };
 
-// ✅ Get all entries
-// exports.getAllEntries = async (req, res) => {
-//   try {
-//     const entries = await Vision.find().sort({ createdAt: -1 });
-
-//     if (!entries.length) {
-//       return res.status(404).json({ message: "No entries found" });
-//     }
-
-//     res.status(200).json(entries);
-//   } catch (error) {
-//     res.status(500).json({ message: "Server error", error: error.message });
-//   }
-// };
 
 exports.getAllEntries = async (req, res) => {
+  try {
+    const entries = await Vision.find().sort({ createdAt: -1 });
+
+    if (!entries.length) {
+      return res.status(404).json({ message: "No entries found" });
+    }
+
+    res.status(200).json(entries);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+exports.getAllEntriesFast = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;

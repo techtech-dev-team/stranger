@@ -116,15 +116,18 @@ const sseHandler = (req, res) => {
 const getCustomersFast = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 30; // You can tweak this if needed
     const skip = (page - 1) * limit;
 
-    const customers = await Customer.find({}, 'name phoneNumber email') // Fetch only basic fields
-      .populate({ path: 'staffAttending', select: 'name' }) // Only light fields
-      .populate({ path: 'service', select: 'name price' })
+    const customers = await Customer.find()
+      .populate({ path: 'service', select: '-__v' }) // All fields except version
+      .populate({ path: 'staffAttending', select: '-__v' })
+      .populate({ path: 'branchId', select: '-__v' })
+      .populate({ path: 'centreId', select: '-__v' })
+      .populate({ path: 'regionId', select: '-__v' })
       .skip(skip)
       .limit(limit)
-      .lean(); // Must-have for performance
+      .lean(); 
 
     res.status(200).json({
       page,
@@ -133,10 +136,11 @@ const getCustomersFast = async (req, res) => {
       customers,
     });
   } catch (error) {
-    console.error("🔥 Fast customer fetch failed:", error);
+    console.error("❌ Error fetching customers:", error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 
 

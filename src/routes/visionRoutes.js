@@ -1,5 +1,5 @@
 const express = require('express');
-const { addEntry, getAllEntries, getEntryById, updateEntry, deleteEntry ,getTodayVisionReport, getVisionReport, sseHandler  } = require('../controllers/visionController');
+const { addEntry, getAllEntries,getAllEntriesFast, getEntryById, updateEntry, deleteEntry ,getTodayVisionReport, getVisionReport, sseHandler  } = require('../controllers/visionController');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -13,7 +13,7 @@ router.post('/add', protect, addEntry);
 
 // ✅ Get all entries for the logged-in user
 router.get('/list', protect, getAllEntries);
-
+router.get('/fast-list', getAllEntriesFast);
 // ✅ Get a single entry by ID (only if it belongs to logged-in user)
 router.get('/:id', protect, getEntryById);
 
