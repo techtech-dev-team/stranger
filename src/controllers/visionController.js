@@ -224,69 +224,77 @@ exports.deleteEntry = async (req, res) => {
 
 exports.getVisionReport = async (req, res) => {
   try {
-    const { date } = req.query;
+    // 🗓️ Define a static date range (last 7 days)
+    const endDate = moment().endOf("day").toDate();
+    const startDate = moment().subtract(6, "days").startOf("day").toDate();
 
-    // Build date filter
-    let dateFilter = {};
-    if (date) {
-      const start = moment(date).startOf("day").toDate();
-      const end = moment(date).add(1, "day").startOf("day").toDate();
-      dateFilter = { createdAt: { $gte: start, $lt: end } };
-    }
+    const dateFilter = { createdAt: { $gte: startDate, $lt: endDate } };
 
-    // Fetch users with Vision role
     const users = await User.find({ role: "Vision" }).select("_id name centreIds");
 
-    // Build centreMap
     const centres = await Centre.find().select("_id centreId");
     const centreMap = centres.reduce((acc, centre) => {
       acc[centre._id.toString()] = centre.centreId.split("_")[0];
       return acc;
     }, {});
 
-    // Fetch vision & customer entries with only time fields
     const [visionEntries, customerEntries] = await Promise.all([
-      Vision.find(dateFilter).select("time"),
-      Customer.find(dateFilter).select("inTime")
+      Vision.find(dateFilter).select("time createdAt"),
+      Customer.find(dateFilter).select("inTime createdAt"),
     ]);
 
-    // Create a Set of rounded customer inTimes (in minutes)
-    const customerTimeSet = new Set();
-    customerEntries.forEach(customer => {
-      const inTime = new Date(customer.inTime).getTime();
-      customerTimeSet.add(Math.floor(inTime / (1000 * 60)));
-    });
+    const groupByDate = (entries, timeField) => {
+      return entries.reduce((acc, entry) => {
+        const dateKey = moment(entry.createdAt).format("YYYY-MM-DD");
+        acc[dateKey] = acc[dateKey] || [];
+        acc[dateKey].push(entry[timeField]);
+        return acc;
+      }, {});
+    };
 
-    // Count matches
-    let matchedCount = 0;
+    const visionByDate = groupByDate(visionEntries, "time");
+    const customerByDate = groupByDate(customerEntries, "inTime");
 
-    visionEntries.forEach(vision => {
-      const visionTime = new Date(vision.time).getTime();
-      const visionMinute = Math.floor(visionTime / (1000 * 60));
-
-      // Check ±15 minutes
-      for (let offset = -15; offset <= 15; offset++) {
-        if (customerTimeSet.has(visionMinute + offset)) {
-          matchedCount++;
-          break;
-        }
-      }
-    });
-
-    const missedCount = customerEntries.length - matchedCount;
-
-    // Create final report for each user
     const report = users.map(user => {
       const cameraAccess = (user.centreIds || [])
         .map(id => centreMap[id] || "N/A")
         .join(", ");
 
+      const userReports = [];
+
+      Object.keys(visionByDate).forEach(dateKey => {
+        const visionList = visionByDate[dateKey];
+        const customerList = customerByDate[dateKey] || [];
+
+        const customerTimeSet = new Set(
+          customerList.map(inTime => Math.floor(new Date(inTime).getTime() / (1000 * 60)))
+        );
+
+        let matched = 0;
+        visionList.forEach(visionTime => {
+          const visionMinute = Math.floor(new Date(visionTime).getTime() / (1000 * 60));
+          for (let offset = -15; offset <= 15; offset++) {
+            if (customerTimeSet.has(visionMinute + offset)) {
+              matched++;
+              break;
+            }
+          }
+        });
+
+        const missed = customerList.length - matched;
+
+        userReports.push({
+          date: dateKey,
+          matchedEntries: matched,
+          missedEntries: missed
+        });
+      });
+
       return {
         userId: user._id,
         name: user.name,
         cameraAccess,
-        matchedEntries: matchedCount,
-        missedEntries: missedCount
+        reports: userReports
       };
     });
 
