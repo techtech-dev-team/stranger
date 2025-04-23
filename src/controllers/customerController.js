@@ -113,6 +113,32 @@ const sseHandler = (req, res) => {
     clients.splice(clients.indexOf(res), 1);
   });
 };
+const getCustomersFast = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const customers = await Customer.find({}, 'name phoneNumber email') // Fetch only basic fields
+      .populate({ path: 'staffAttending', select: 'name' }) // Only light fields
+      .populate({ path: 'service', select: 'name price' })
+      .skip(skip)
+      .limit(limit)
+      .lean(); // Must-have for performance
+
+    res.status(200).json({
+      page,
+      limit,
+      count: customers.length,
+      customers,
+    });
+  } catch (error) {
+    console.error("🔥 Fast customer fetch failed:", error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+
 
 const getCustomers = async (req, res) => {
   try {
@@ -850,4 +876,4 @@ const getFilteredCustomers = async (_, res) => {
   }
 };  
 
-module.exports = {getDashboardBlocks ,addCustomer, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers};
+module.exports = {getDashboardBlocks ,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers};
