@@ -157,70 +157,146 @@ exports.deleteEntry = async (req, res) => {
 };
 
 // Vision Report API
+// exports.getVisionReport = async (req, res) => {
+//   try {
+//     const { date } = req.query;
+
+//     // Date filter (optional)
+//     let dateFilter = {};
+//     if (date) {
+//       const formattedDate = moment(date).startOf("day").toISOString();
+//       const nextDay = moment(date).add(1, "day").startOf("day").toISOString();
+//       dateFilter = { createdAt: { $gte: formattedDate, $lt: nextDay } };
+//     }
+
+//     // Fetch all vision staff
+//     const users = await User.find({ role: "Vision" }).select("_id name centreIds");
+
+//     // Fetch all centres to get centre codes
+//     const centres = await Centre.find().select("_id centreId");
+//     const centreMap = centres.reduce((acc, centre) => {
+//       acc[centre._id.toString()] = centre.centreId.split("_")[0]; // Extract first 3 digits
+//       return acc;
+//     }, {});
+
+//     // Fetch all vision and customer entries (filtered if date is provided)
+//     const visionEntries = await Vision.find(dateFilter);
+//     const customerEntries = await Customer.find(dateFilter);
+
+//     // Generate report
+//     const report = users.map(user => {
+//       // Get Camera Access (First three digits of centreIds)
+//       const cameraAccess = (user.centreIds || []).map(id => centreMap[id] || "N/A").join(", ");
+
+//       let matchedEntries = 0;
+//       let missedEntries = customerEntries.length;
+
+//       visionEntries.forEach(vision => {
+//         const visionTime = new Date(vision.time);
+//         const matched = customerEntries.some(customer => {
+//           const customerTime = new Date(customer.inTime);
+//           const timeDifference = Math.abs(visionTime - customerTime) / (1000 * 60);
+//           return timeDifference <= 15;
+//         });
+
+//         if (matched) matchedEntries += 1;
+//       });
+
+//       // Calculate Missed Entries
+//       missedEntries -= matchedEntries;
+
+//       return {
+//         userId: user._id,
+//         name: user.name,
+//         cameraAccess,
+//         matchedEntries,
+//         missedEntries
+//       };
+//     });
+
+//     res.status(200).json({ success: true, data: report });
+
+//   } catch (error) {
+//     console.error("Error fetching vision report:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
 exports.getVisionReport = async (req, res) => {
   try {
     const { date } = req.query;
 
-    // Date filter (optional)
+    // Build date filter
     let dateFilter = {};
     if (date) {
-      const formattedDate = moment(date).startOf("day").toISOString();
-      const nextDay = moment(date).add(1, "day").startOf("day").toISOString();
-      dateFilter = { createdAt: { $gte: formattedDate, $lt: nextDay } };
+      const start = moment(date).startOf("day").toDate();
+      const end = moment(date).add(1, "day").startOf("day").toDate();
+      dateFilter = { createdAt: { $gte: start, $lt: end } };
     }
 
-    // Fetch all vision staff
+    // Fetch users with Vision role
     const users = await User.find({ role: "Vision" }).select("_id name centreIds");
 
-    // Fetch all centres to get centre codes
+    // Build centreMap
     const centres = await Centre.find().select("_id centreId");
     const centreMap = centres.reduce((acc, centre) => {
-      acc[centre._id.toString()] = centre.centreId.split("_")[0]; // Extract first 3 digits
+      acc[centre._id.toString()] = centre.centreId.split("_")[0];
       return acc;
     }, {});
 
-    // Fetch all vision and customer entries (filtered if date is provided)
-    const visionEntries = await Vision.find(dateFilter);
-    const customerEntries = await Customer.find(dateFilter);
+    // Fetch vision & customer entries with only time fields
+    const [visionEntries, customerEntries] = await Promise.all([
+      Vision.find(dateFilter).select("time"),
+      Customer.find(dateFilter).select("inTime")
+    ]);
 
-    // Generate report
+    // Create a Set of rounded customer inTimes (in minutes)
+    const customerTimeSet = new Set();
+    customerEntries.forEach(customer => {
+      const inTime = new Date(customer.inTime).getTime();
+      customerTimeSet.add(Math.floor(inTime / (1000 * 60)));
+    });
+
+    // Count matches
+    let matchedCount = 0;
+
+    visionEntries.forEach(vision => {
+      const visionTime = new Date(vision.time).getTime();
+      const visionMinute = Math.floor(visionTime / (1000 * 60));
+
+      // Check ±15 minutes
+      for (let offset = -15; offset <= 15; offset++) {
+        if (customerTimeSet.has(visionMinute + offset)) {
+          matchedCount++;
+          break;
+        }
+      }
+    });
+
+    const missedCount = customerEntries.length - matchedCount;
+
+    // Create final report for each user
     const report = users.map(user => {
-      // Get Camera Access (First three digits of centreIds)
-      const cameraAccess = (user.centreIds || []).map(id => centreMap[id] || "N/A").join(", ");
-
-      let matchedEntries = 0;
-      let missedEntries = customerEntries.length;
-
-      visionEntries.forEach(vision => {
-        const visionTime = new Date(vision.time);
-        const matched = customerEntries.some(customer => {
-          const customerTime = new Date(customer.inTime);
-          const timeDifference = Math.abs(visionTime - customerTime) / (1000 * 60);
-          return timeDifference <= 15;
-        });
-
-        if (matched) matchedEntries += 1;
-      });
-
-      // Calculate Missed Entries
-      missedEntries -= matchedEntries;
+      const cameraAccess = (user.centreIds || [])
+        .map(id => centreMap[id] || "N/A")
+        .join(", ");
 
       return {
         userId: user._id,
         name: user.name,
         cameraAccess,
-        matchedEntries,
-        missedEntries
+        matchedEntries: matchedCount,
+        missedEntries: missedCount
       };
     });
 
     res.status(200).json({ success: true, data: report });
-
   } catch (error) {
     console.error("Error fetching vision report:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 exports.getTodayVisionReport = async (req, res) => {
   try {
