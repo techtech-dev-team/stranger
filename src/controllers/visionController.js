@@ -70,16 +70,45 @@ exports.addEntry = async (req, res) => {
 };
 
 // ✅ Get all entries
+// exports.getAllEntries = async (req, res) => {
+//   try {
+//     const entries = await Vision.find().sort({ createdAt: -1 });
+
+//     if (!entries.length) {
+//       return res.status(404).json({ message: "No entries found" });
+//     }
+
+//     res.status(200).json(entries);
+//   } catch (error) {
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
 exports.getAllEntries = async (req, res) => {
   try {
-    const entries = await Vision.find().sort({ createdAt: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // Optimized query: paginated, sorted, lean for speed
+    const entries = await Vision.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(); // lean makes it faster by skipping mongoose document wrapping
 
     if (!entries.length) {
       return res.status(404).json({ message: "No entries found" });
     }
 
-    res.status(200).json(entries);
+    res.status(200).json({
+      page,
+      limit,
+      count: entries.length,
+      entries,
+    });
   } catch (error) {
+    console.error("Error fetching entries:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
