@@ -8,7 +8,7 @@ const customerSchema = new mongoose.Schema({
   inTime: { type: Date, required: true }, 
   paymentCash1: { type: Number, default: 0 },
   paymentOnline1: { type: Number, default: 0 },
-  staffAttending: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  staffAttending: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }],
   paymentCash2: { type: Number, default: 0 },
   paymentOnline2: { type: Number, default: 0 },
   cashCommission: { type: Number, default: 0 },
@@ -24,3 +24,8 @@ const customerSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Customer', customerSchema);
+
+
+
+
+

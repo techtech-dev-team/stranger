@@ -62,7 +62,7 @@ const addCustomer = async (req, res) => {
       inTime: moment.tz(inTime, "MM/DD/YYYY, hh:mm:ss A", "Asia/Kolkata").toDate(), // Convert to IST
       paymentCash1,
       paymentOnline1,
-      staffAttending,
+      staffAttending: Array.isArray(staffAttending) ? staffAttending : [staffAttending],
       paymentCash2,
       paymentOnline2,
       cashCommission,
