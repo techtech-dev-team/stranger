@@ -133,6 +133,60 @@ exports.login = async (req, res) => {
   }
 };
 
+exports.login2 = async (req, res) => {
+  try {
+    const { loginId, pin } = req.body;
+
+    const user = await User.findOne({ loginId }).lean(); // Use .lean() to reduce overhead
+
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    if (user.pin !== pin) {
+      return res.status(401).json({ message: "Invalid PIN" });
+    }
+
+    // ✅ Cleaned-up version of the user object
+    const { pin: _pin, password, centres, ...safeUser } = user;
+
+    // 🧠 Optional: if centres is huge, just map the essentials
+    const safeCentres = (centres || []).map(centre => ({
+      centreId: centre.centreId || centre._id,
+      name: centre.name || "Unnamed",
+      // Add more only if needed
+    }));
+
+    // ✅ Final payload for token (only essentials)
+    const userPayload = {
+      userId: user.userId,
+      loginId: user.loginId,
+      role: user.role,
+    };
+
+    const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict"
+    });
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        ...safeUser,
+        centres: safeCentres // ⬅️ Now centres are trimmed
+      },
+      role: user.role
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find()
