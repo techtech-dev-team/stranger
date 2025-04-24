@@ -175,6 +175,49 @@ const getCustomers = async (req, res) => {
   }
 };
 
+const deleteCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate customer ID
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid customer ID" });
+    }
+
+    // Find the customer to delete
+    const customer = await Customer.findById(id);
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    // Update the centre balance if necessary
+    const centre = await Centre.findById(customer.centreId);
+    if (centre) {
+      let balanceUpdate = 0;
+
+      if (centre.payCriteria === "plus") {
+        balanceUpdate = -(Number(customer.paymentCash1 || 0) + Number(customer.paymentOnline1 || 0));
+      } else if (centre.payCriteria === "minus") {
+        balanceUpdate = -(Number(customer.paymentCash1 || 0) + Number(customer.paymentOnline1 || 0));
+      }
+
+      centre.balance += balanceUpdate;
+      await centre.save();
+    }
+
+    // Delete the customer
+    await Customer.findByIdAndDelete(id);
+
+    // Notify clients via SSE
+    sendSSEEvent({ message: "Customer deleted", customerId: id });
+
+    res.status(200).json({ message: "Customer deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting customer:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // const getCentreSalesReport = async (req, res) => {
 //   try {
 //     const { centreId } = req.query;
@@ -939,4 +982,4 @@ const getRecentCustomersByCentreId = async (req, res) => {
 
 
 
-module.exports = {getDashboardBlocks ,getRecentCustomersByCentreId ,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers};
+module.exports = {getDashboardBlocks ,getRecentCustomersByCentreId ,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers,deleteCustomer};
