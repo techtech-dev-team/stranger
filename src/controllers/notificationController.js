@@ -5,8 +5,6 @@ const User = require('../models/User');
 const { sendNotification } = require('../services/notificationService');
 const moment = require('moment-timezone');
 
- // Update with your actual models
-
 // SSE function to broadcast messages to all connected clients
 const clients = []; // Array to keep track of connected clients for SSE
 
@@ -22,6 +20,7 @@ const registerSSEClient = (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("Access-Control-Allow-Origin", "*"); // Allow all origins
   res.setHeader('Content-Encoding', 'identity'); // Disable compression to avoid chunking issues
   res.flushHeaders(); // Immediately flush headers
 
