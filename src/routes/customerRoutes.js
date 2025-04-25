@@ -7,12 +7,18 @@ const router = express.Router();
 router.get("/sse", sseHandler);
 
 router.get("/dashboard-blocks", getDashboardBlocks);
+
 router.get("/fast-list", getCustomersFast); 
+
 router.get("/sales-graph", getSalesGraphData);
 
+
 router.post('/add', protect, addCustomer);
+
 router.delete('/:id', deleteCustomer);
+
 router.get('/list', protect, getCustomers);
+
 router.get('/:centreId/recent-customers', getRecentCustomersByCentreId);
 
 router.get('/filtered-customers', getFilteredCustomers);
