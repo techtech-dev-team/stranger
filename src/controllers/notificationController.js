@@ -61,14 +61,14 @@ const sseHandler = (req, res) => {
 const checkMissedEntries = async () => {
   try {
     const twoMinutesAgo = moment().subtract(2, 'minutes').toDate();
-    console.log(`\nChecking missed entries since: ${twoMinutesAgo}`);
+    console.log(`Checking missed entries since: ${twoMinutesAgo}`);
 
-    // --- 1. Customer Entries: Check for missing Vision entry ---
+    // --- 1. Customer Entries ---
     const recentCustomers = await Customer.find({ createdAt: { $gte: twoMinutesAgo } });
     console.log(`Found ${recentCustomers.length} recent customer entries.`);
 
     for (const customer of recentCustomers) {
-      console.log(`\nChecking customer: ${customer.name} (${customer.number || 'No number'}) at centre: ${customer.centreId}`);
+      console.log(`Checking customer: ${customer.name} (${customer.number || 'No number'})`);
 
       const visionEntry = await Vision.findOne({
         centreId: customer.centreId,
@@ -81,31 +81,28 @@ const checkMissedEntries = async () => {
       const alreadyLogged = await MissedEntry.findOne({ customerId: customer._id });
 
       if (!visionEntry && !alreadyLogged) {
-        console.log(`❌ Vision entry missing for ${customer.name} at centre ${customer.centreId}`);
+        console.log(`❌ Vision entry missing for ${customer.name}`);
 
         const visionManager = await User.findOne({ role: 'Vision', centreIds: customer.centreId });
-
         if (visionManager) {
           const message = `Missed Vision Entry for Centre: ${customer.centreId}`;
           sendNotification(visionManager._id, message);
-          sendSSE({ type: 'MissedEntry', message });
+          sendSSEToAll({ type: 'MissedEntry', message });
         }
 
         await MissedEntry.create({
           customerId: customer._id,
           type: 'Vision Missed',
         });
-      } else {
-        console.log(`✅ Vision entry found or already handled.`);
       }
     }
 
-    // --- 2. Vision Entries: Check for missing Customer entry ---
+    // --- 2. Vision Entries ---
     const recentVisionEntries = await Vision.find({ time: { $gte: twoMinutesAgo } });
-    console.log(`\nFound ${recentVisionEntries.length} recent Vision entries.`);
+    console.log(`Found ${recentVisionEntries.length} recent Vision entries.`);
 
     for (const vision of recentVisionEntries) {
-      console.log(`\nChecking vision entry at centre: ${vision.centreId} (name/code: ${vision.nameOrCode})`);
+      console.log(`Checking vision entry at centre: ${vision.centreId}`);
 
       const customerEntry = await Customer.findOne({
         centreId: vision.centreId,
@@ -122,28 +119,27 @@ const checkMissedEntries = async () => {
 
         const cmManager = await User.findOne({
           role: 'CM',
-          centreIds: { $in: [vision.centreId] }, // ✅ Use $in for array matching
+          centreIds: { $in: [vision.centreId] },
         });
 
         if (cmManager) {
           const message = `Missed Customer Entry for Centre: ${vision.centreId}`;
           sendNotification(cmManager._id, message);
-          sendSSE({ type: 'MissedEntry', message });
+          sendSSEToAll({ type: 'MissedEntry', message });
         }
 
         await MissedEntry.create({
           visionId: vision._id,
           type: 'Customer Missed',
         });
-      } else {
-        console.log(`✅ Customer entry found or already handled.`);
       }
     }
 
-    console.log(`\n✅ Missed entries check completed.\n`);
+    console.log(`Missed entries check completed.`);
   } catch (error) {
     console.error('Error in checkMissedEntries:', error);
   }
 };
+
 
 module.exports = { checkMissedEntries, sseHandler };
