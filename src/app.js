@@ -4,7 +4,7 @@ const bodyParser = require("body-parser");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const cookieParser = require("cookie-parser");
-
+const { registerSSEClient } = require('./controllers/notificationController');
 // Import Routes
 const adminRoutes = require("./routes/adminRoutes");
 const customerRoutes = require("./routes/customerRoutes");
@@ -76,7 +76,7 @@ app.use(
       },
     })
   );
-
+app.get('/notifications', registerSSEClient);
 app.use("/api/master", masterController); 
 app.use("/api/sse", sseRoutes);
 app.use("/api/users", userRoutes);
