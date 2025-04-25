@@ -15,14 +15,17 @@ router.post('/check-missed-entries', async (req, res) => {
 
 // GET - Live Notifications using SSE
 router.get("/notifications", (req, res) => {
-  // Set necessary headers for SSE
+  console.log('New SSE client connection received');
+
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader('Content-Encoding', 'identity'); // Disable compression to avoid chunking issues
+
   res.flushHeaders(); // Immediately flush headers
 
   const sendEvent = (data) => {
+    console.log('Sending event:', data); // Debugging log
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
@@ -36,17 +39,18 @@ router.get("/notifications", (req, res) => {
 
   // Simulate live updates
   const sendLiveUpdates = setInterval(() => {
-    sendEvent({ timestamp: new Date().toISOString(), message: "Live update!" });
+    const message = { timestamp: new Date().toISOString(), message: "Live update!" };
+    console.log('Sending live update:', message);  // Debugging log
+    sendEvent(message);
   }, 5000);
 
   // Handle client disconnection
   req.on("close", () => {
+    console.log('SSE client disconnected');
     clearInterval(keepAlive);
     clearInterval(sendLiveUpdates);
     res.end();
   });
 });
-
-
 
 module.exports = router;
