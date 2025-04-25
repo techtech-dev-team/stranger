@@ -77,7 +77,7 @@ app.use(
     })
   );
 
- 
+app.use("/api/master", masterController); 
 app.use("/api/sse", sseRoutes);
 app.use("/api/users", userRoutes);
 app.use("/game", gameRoutes);
@@ -87,6 +87,7 @@ app.use("/api/expense", expenseRoutes);
 app.use("/api/visionid", visionIdRoutes);
 app.use("/api/tids", tidRoutes);
 app.use("/api", transactionRoutes);
+app.use('/api/notifications', notificationRoutes);
 // Routes (Protected)
 app.use(protect);
 // Refresh data before any API route is hit
@@ -102,5 +103,5 @@ app.use('/api/notifications', notificationRoutes);
 app.use("/api/sales", salesRoutes); // Base route for sales-related APIs
 app.use('/api/graph', graphRoutes);
  // Master admin route
- app.use("/api/master", masterController); 
+
 module.exports = app;
