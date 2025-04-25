@@ -15,13 +15,10 @@ router.post('/check-missed-entries', async (req, res) => {
 
 // GET - Live Notifications using SSE
 router.get("/notifications", (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "https://test.st9.in"); // Allow your frontend origin
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
-  res.flushHeaders(); // Force headers to be sent now
+  res.flushHeaders(); // immediately flush headers
 
   const sendEvent = (data) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
@@ -30,7 +27,7 @@ router.get("/notifications", (req, res) => {
   sendEvent({ message: "SSE connected" });
 
   const keepAlive = setInterval(() => {
-    res.write(`: ping\n\n`);
+    res.write(`: ping\n\n`);  // Keep connection alive
   }, 15000);
 
   req.on("close", () => {
@@ -38,5 +35,6 @@ router.get("/notifications", (req, res) => {
     res.end();
   });
 });
+
 
 module.exports = router;
