@@ -22,12 +22,12 @@ router.get('/check', async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const fifteenMinutesAgo = moment().subtract(15, 'minutes').toDate();
+    const oneMinutesAgo = moment().subtract(1, 'minutes').toDate();
     const messages = [];
 
     if (user.role === 'Vision') {
       const visionEntries = await Vision.find({
-        time: { $gte: fifteenMinutesAgo },
+        time: { $gte: oneMinutesAgo },
         centreId: { $in: user.centreIds }
       });
 
@@ -57,7 +57,7 @@ router.get('/check', async (req, res) => {
 
     if (user.role === 'CM') {
       const customerEntries = await Customer.find({
-        createdAt: { $gte: fifteenMinutesAgo },
+        createdAt: { $gte: oneMinutesAgo },
         centreId: { $in: user.centreIds }
       });
 
