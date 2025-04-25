@@ -185,14 +185,24 @@ const sseHandler = (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+
+  // 💥 CORS header (TEMP: use "*" or set to your frontend domain)
+  res.setHeader('Access-Control-Allow-Origin', '*'); 
+
+  // 🚀 This line is essential to flush the headers immediately
   res.flushHeaders();
 
+  // 💾 Push the client
   sseClients.push({ res });
 
+  // 🧹 Clean up on disconnect
   req.on('close', () => {
-    sseClients.splice(sseClients.indexOf(res), 1);
+    console.log('SSE client disconnected');
+    const idx = sseClients.findIndex(client => client.res === res);
+    if (idx !== -1) sseClients.splice(idx, 1);
   });
 };
+
 
 
 module.exports = { checkMissedEntries, sseHandler };
