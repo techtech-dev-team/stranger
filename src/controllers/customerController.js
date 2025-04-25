@@ -381,6 +381,9 @@ const getCentreSalesReport = async (req, res) => {
         totalCash: report.totalCash,
         totalOnline: report.totalOnline,
         totalSales: grandTotal,
+        totalOnlineCommission: report.totalCommission,
+        totalCashCommission: report.totalCashCommission,
+        totalCommission: report.totalCommission,  
         totalCustomers: report.totalCustomers,
         cashBalance,
       };
