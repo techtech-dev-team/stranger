@@ -17,6 +17,16 @@ const sendSSE = (data, res) => {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 };
 
+const sendSSEToAll = (data) => {
+  console.log(`Broadcasting to ${sseClients.length} clients:`, data);
+  sseClients.forEach(client => {
+    try {
+      sendSSE(data, client.res);
+    } catch (error) {
+      console.error('Error sending SSE to client:', error);
+    }
+  });
+};
 // SSE Endpoint to subscribe to live notifications
 const sseHandler = (req, res) => {
   console.log('SSE client connected');
