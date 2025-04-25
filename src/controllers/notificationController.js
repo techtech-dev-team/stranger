@@ -82,93 +82,91 @@ const sseClients = []; // To store SSE clients for live notifications
 const checkMissedEntries = async () => {
   try {
     const twoMinutesAgo = moment().subtract(2, 'minutes').toDate();
-    console.log(`Checking missed entries since: ${twoMinutesAgo}`);
+    console.log(`\nChecking missed entries since: ${twoMinutesAgo}`);
 
-    // 1. Recently added Customers
+    // --- 1. Customer Entries: Check for missing Vision entry ---
     const recentCustomers = await Customer.find({ createdAt: { $gte: twoMinutesAgo } });
     console.log(`Found ${recentCustomers.length} recent customer entries.`);
 
     for (const customer of recentCustomers) {
-      console.log(`\nChecking customer: ${customer.name} (${customer.number})`);
+      console.log(`\nChecking customer: ${customer.name} (${customer.number || 'No number'}) at centre: ${customer.centreId}`);
 
       const visionEntry = await Vision.findOne({
+        centreId: customer.centreId,
         time: {
-          $gte: moment(customer.inTime).subtract(1, 'minutes').toISOString(),
-          $lte: moment(customer.inTime).add(1, 'minutes').toISOString(),
+          $gte: moment(customer.inTime).subtract(2, 'minutes').toISOString(),
+          $lte: moment(customer.inTime).add(2, 'minutes').toISOString(),
         },
-        nameOrCode: customer.number,
       });
 
-      const alreadyLogged = await MissedEntry.findOne({ customerId: customer._id, visionId: visionEntry?._id });
+      const alreadyLogged = await MissedEntry.findOne({ customerId: customer._id });
 
       if (!visionEntry && !alreadyLogged) {
-        console.log(`❌ Vision entry missing for ${customer.name}`);
+        console.log(`❌ Vision entry missing for ${customer.name} at centre ${customer.centreId}`);
 
         const visionManager = await User.findOne({ role: 'Vision', centreIds: customer.centreId });
 
         if (visionManager) {
-          const msg = `Missed Vision Entry for Customer: ${customer.name}`;
-          console.log(`📢 Notifying Vision Manager (${visionManager._id}): ${msg}`);
-          sendNotification(visionManager._id, msg);
-          sendSSE({ type: 'MissedEntry', message: msg, centreId: customer.centreId });
-        }
-
-        await MissedEntry.create({ customerId: customer._id, type: 'Vision Missed' });
-      }
-
-      if (visionEntry && !alreadyLogged) {
-        console.log(`❌ Customer entry present, but might be a Centre Missed.`);
-
-        const centreManager = await User.findOne({ role: 'CM', centreIds: customer.centreId });
-
-        if (centreManager) {
-          const msg = `Missed Centre Entry for Vision: ${visionEntry.nameOrCode}`;
-          console.log(`📢 Notifying CM (${centreManager._id}): ${msg}`);
-          sendNotification(centreManager._id, msg);
-          sendSSE({ type: 'MissedEntry', message: msg, centreId: customer.centreId });
+          const message = `Missed Vision Entry for Centre: ${customer.centreId}`;
+          sendNotification(visionManager._id, message);
+          sendSSE({ type: 'MissedEntry', message });
         }
 
         await MissedEntry.create({
           customerId: customer._id,
-          visionId: visionEntry._id,
-          type: 'Centre Missed',
+          type: 'Vision Missed',
         });
+      } else {
+        console.log(`✅ Vision entry found or already handled.`);
       }
     }
 
-    // 2. Vision entries from last 2 minutes
-    const recentVisions = await Vision.find({ time: { $gte: twoMinutesAgo } });
-    console.log(`\nFound ${recentVisions.length} recent Vision entries.`);
+    // --- 2. Vision Entries: Check for missing Customer entry ---
+    const recentVisionEntries = await Vision.find({ time: { $gte: twoMinutesAgo } });
+    console.log(`\nFound ${recentVisionEntries.length} recent Vision entries.`);
 
-    for (const visionEntry of recentVisions) {
-      console.log(`Checking Vision: ${visionEntry.nameOrCode}`);
+    for (const vision of recentVisionEntries) {
+      console.log(`\nChecking vision entry at centre: ${vision.centreId} (name/code: ${vision.nameOrCode})`);
 
       const customerEntry = await Customer.findOne({
-        number: visionEntry.nameOrCode,
-        inTime: visionEntry.time,
+        centreId: vision.centreId,
+        inTime: {
+          $gte: moment(vision.time).subtract(2, 'minutes').toDate(),
+          $lte: moment(vision.time).add(2, 'minutes').toDate(),
+        },
       });
 
-      if (!customerEntry) {
-        console.log(`❌ No matching customer entry for Vision: ${visionEntry.nameOrCode}`);
+      const alreadyLogged = await MissedEntry.findOne({ visionId: vision._id });
 
-        const cm = await User.findOne({ role: 'CM', centreIds: visionEntry.centreId });
+      if (!customerEntry && !alreadyLogged) {
+        console.log(`❌ Customer entry missing for Vision input at centre ${vision.centreId}`);
 
-        if (cm) {
-          const msg = `Missed Customer Entry for Vision: ${visionEntry.nameOrCode}`;
-          console.log(`📢 Notifying CM (${cm._id}): ${msg}`);
-          sendNotification(cm._id, msg);
-          sendSSE({ type: 'MissedEntry', message: msg, centreId: visionEntry.centreId });
+        const cmManager = await User.findOne({
+          role: 'CM',
+          centreIds: { $in: [vision.centreId] }, // ✅ Use $in for array matching
+        });
+
+        if (cmManager) {
+          const message = `Missed Customer Entry for Centre: ${vision.centreId}`;
+          sendNotification(cmManager._id, message);
+          sendSSE({ type: 'MissedEntry', message });
         }
 
-        await MissedEntry.create({ visionId: visionEntry._id, type: 'Customer Missed' });
+        await MissedEntry.create({
+          visionId: vision._id,
+          type: 'Customer Missed',
+        });
+      } else {
+        console.log(`✅ Customer entry found or already handled.`);
       }
     }
 
-    console.log('\n✅ Missed entries check completed.\n');
+    console.log(`\n✅ Missed entries check completed.\n`);
   } catch (error) {
-    console.error('❌ Error in checkMissedEntries:', error);
+    console.error('Error in checkMissedEntries:', error);
   }
 };
+
 
 
 
