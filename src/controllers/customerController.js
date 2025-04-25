@@ -14,8 +14,7 @@ const addCustomer = async (req, res) => {
       cashCommission, onlineCommission, outTime, branchId, centreId, regionId
     } = req.body;
 
-    console.log("Body", req.body);
-    
+  
     // Ensure user is authenticated
     if (!req.user || !req.user._id) {
       return res.status(401).json({ message: 'Unauthorized' });
@@ -75,7 +74,6 @@ const addCustomer = async (req, res) => {
     });
     
     await newCustomer.save();
-    console.log("New newCustomer", newCustomer);
     
     // Fetch the customer with populated references
     const populatedCustomer = await Customer.findById(newCustomer._id)
@@ -126,7 +124,6 @@ const getCustomersFast = async (req, res) => {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    console.time("query");
 
     const customers = await Customer.find({
       createdAt: { $gte: startOfDay, $lte: endOfDay }
@@ -139,7 +136,6 @@ const getCustomersFast = async (req, res) => {
       .populate('regionId', '-__v')
       .lean(); // Optional: lean() makes it faster but drops virtuals/getters
 
-    console.timeEnd("query");
 
     res.status(200).json({
       date,
@@ -781,7 +777,6 @@ const updateCustomer = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    console.log("Update Payload:", updates);
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid customer ID" });
@@ -797,7 +792,7 @@ const updateCustomer = async (req, res) => {
     const createdAt = new Date(existingCustomer.createdAt);
     const diff = now.getTime() - createdAt.getTime();
     const minutes = Math.floor(diff / 60000);
-    console.log(`Customer created ${minutes} minutes ago`);
+    
 
     // 👉 Temporarily disabled this condition for flexibility
     // if (minutes < 5) {
@@ -922,7 +917,7 @@ const getDashboardBlocks = async (req, res) => {
 
 
 const getFilteredCustomers = async (_, res) => {
-  console.log("🔥 getFilteredCustomers called");
+ 
   try {
     const customers = await Customer.find({
       status: { $nin: ["All ok", "null"] }
@@ -936,7 +931,7 @@ const getFilteredCustomers = async (_, res) => {
   
     res.status(200).json(customers);
   } catch (error) {
-    console.error("🔥 Error during customer fetch:", error);
+    console.error(" Error during customer fetch:", error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };  
