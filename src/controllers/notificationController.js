@@ -1,5 +1,6 @@
 const Customer = require('../models/Customer');
 const Vision = require('../models/Vision');
+const Centre = require('../models/Centre');
 const MissedEntry = require('../models/MissedEntry');
 const User = require('../models/User');
 const { sendNotification } = require('../services/notificationService');
@@ -60,16 +61,19 @@ const checkMissedEntries = async () => {
 
       if (!visionEntry) {
         console.log(`❌ Vision entry missing for ${customer.name}`);
-
+    
+        // Fetch the actual centreId from the Centre model
+        const centre = await Centre.findById(customer.centreId);
+    
         // Send SSE to all connected clients immediately
         sendSSEToAll({
           type: 'MissedEntry',
           message: `Vision entry missing for ${customer.name}`,
           customerId: customer._id,
           customerName: customer.name,
-          centreId: customer.centreId,
+          centreId: centre ? centre.centreId : 'Unknown Centre', // Use the actual centreId or fallback
         });
-
+    
         console.log(`Sent SSE for missed vision entry of ${customer.name}`);
       }
     }
