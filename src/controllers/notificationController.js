@@ -8,11 +8,13 @@ const moment = require('moment-timezone');
 const sseClients = []; // To store SSE clients for live notifications
 
 // Function to send SSE (Server-Sent Events)
-const sendSSE = (data) => {
-  console.log('Sending SSE message:', data);  // Debugging log
-  sseClients.forEach((client) => {
-    client.res.write(`data: ${JSON.stringify(data)}\n\n`);
-  });
+const sendSSE = (data, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader('Access-Control-Allow-Origin', '*');  // Allow all or dynamic origins
+  res.setHeader('Content-Encoding', 'identity'); // Disable compression
+  res.write(`data: ${JSON.stringify(data)}\n\n`);
 };
 
 // SSE Endpoint to subscribe to live notifications
