@@ -42,12 +42,17 @@ const registerSSEClient = (req, res) => {
 const checkMissedEntries = async () => {
   try {
     const tenMinutesAgo = moment().subtract(10, 'minutes').toDate();
+    const processedCustomerIds = new Set(); // To track processed customer IDs
+    const processedVisionIds = new Set(); // To track processed vision IDs
   
     // --- 1. Customer Entries ---
     const recentCustomers = await Customer.find({ createdAt: { $gte: tenMinutesAgo } });
    
     for (const customer of recentCustomers) {
-     
+      if (processedCustomerIds.has(customer._id.toString())) {
+        continue; // Skip if already processed
+      }
+      
       const visionEntry = await Vision.findOne({
         centreId: customer.centreId,
         time: {
@@ -70,6 +75,7 @@ const checkMissedEntries = async () => {
           customerName: customer.name,
           centreId: centre ? centre.centreId : 'Unknown Centre', // Use the actual centreId or fallback
         });
+        processedCustomerIds.add(customer._id.toString()); // Mark as processed
     
       }
     }
@@ -79,7 +85,9 @@ const checkMissedEntries = async () => {
     console.log(`Found ${recentVisionEntries.length} recent Vision entries.`);
 
     for (const vision of recentVisionEntries) {
-     
+      if (processedVisionIds.has(vision._id.toString())) {
+        continue; // Skip if already processed
+      }
 
       const customerEntry = await Customer.findOne({
         centreId: vision.centreId,
@@ -99,6 +107,7 @@ const checkMissedEntries = async () => {
           centreId: vision.centreId,
           visionId: vision._id,
         });
+        processedVisionIds.add(vision._id.toString()); // Mark as processed
 
       }
     }
