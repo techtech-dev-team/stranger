@@ -14,8 +14,26 @@ router.post('/check-missed-entries', async (req, res) => {
 });
 
 // GET - Live Notifications using SSE
-router.get('/notifications', sseHandler);
+router.get("/notifications", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders(); // force immediate send of headers
 
+  const sendEvent = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
 
+  sendEvent({ message: "SSE connected" });
+
+  const keepAlive = setInterval(() => {
+    res.write(`: ping\n\n`); // comment line to keep connection alive
+  }, 15000);
+
+  req.on("close", () => {
+    clearInterval(keepAlive);
+    res.end();
+  });
+});
 
 module.exports = router;
