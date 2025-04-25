@@ -21,10 +21,14 @@ const sendSSE = (data, res) => {
 const sseHandler = (req, res) => {
   console.log('SSE client connected');
   
+  // Set headers for SSE and CORS
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
-  res.setHeader('Content-Encoding', 'identity'); // Disable compression to avoid chunking issues
+  res.setHeader("Content-Encoding", "identity"); // Disable compression
+  res.setHeader('Access-Control-Allow-Origin', '*');  // Allow all origins for CORS
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   res.flushHeaders();  // Immediately flush headers
 
@@ -49,6 +53,8 @@ const sseHandler = (req, res) => {
     console.log('SSE client disconnected');
     clearInterval(keepAlive);
     clearInterval(sendLiveUpdates);
+    
+    // Remove the client from the sseClients array
     const idx = sseClients.findIndex(client => client.res === res);
     if (idx !== -1) {
       sseClients.splice(idx, 1);
