@@ -41,26 +41,23 @@ const registerSSEClient = (req, res) => {
 // Missed entry check function
 const checkMissedEntries = async () => {
   try {
-    const twoMinutesAgo = moment().subtract(2, 'minutes').toDate();
-    console.log(`Checking missed entries since: ${twoMinutesAgo}`);
-
+    const tenMinutesAgo = moment().subtract(10, 'minutes').toDate();
+  
     // --- 1. Customer Entries ---
-    const recentCustomers = await Customer.find({ createdAt: { $gte: twoMinutesAgo } });
-    console.log(`Found ${recentCustomers.length} recent customer entries.`);
-
+    const recentCustomers = await Customer.find({ createdAt: { $gte: tenMinutesAgo } });
+   
     for (const customer of recentCustomers) {
-      console.log(`Checking customer: ${customer.name} (${customer.number || 'No number'})`);
-
+     
       const visionEntry = await Vision.findOne({
         centreId: customer.centreId,
         time: {
-          $gte: moment(customer.inTime).subtract(2, 'minutes').toISOString(),
-          $lte: moment(customer.inTime).add(2, 'minutes').toISOString(),
+          $gte: moment(customer.inTime).subtract(10, 'minutes').toISOString(),
+          $lte: moment(customer.inTime).add(10, 'minutes').toISOString(),
         },
       });
 
       if (!visionEntry) {
-        console.log(`❌ Vision entry missing for ${customer.name}`);
+     
     
         // Fetch the actual centreId from the Centre model
         const centre = await Centre.findById(customer.centreId);
@@ -74,27 +71,26 @@ const checkMissedEntries = async () => {
           centreId: centre ? centre.centreId : 'Unknown Centre', // Use the actual centreId or fallback
         });
     
-        console.log(`Sent SSE for missed vision entry of ${customer.name}`);
       }
     }
 
     // --- 2. Vision Entries ---
-    const recentVisionEntries = await Vision.find({ time: { $gte: twoMinutesAgo } });
+    const recentVisionEntries = await Vision.find({ time: { $gte: tenMinutesAgo } });
     console.log(`Found ${recentVisionEntries.length} recent Vision entries.`);
 
     for (const vision of recentVisionEntries) {
-      console.log(`Checking vision entry at centre: ${vision.centreId}`);
+     
 
       const customerEntry = await Customer.findOne({
         centreId: vision.centreId,
         inTime: {
-          $gte: moment(vision.time).subtract(2, 'minutes').toDate(),
-          $lte: moment(vision.time).add(2, 'minutes').toDate(),
+          $gte: moment(vision.time).subtract(10, 'minutes').toDate(),
+          $lte: moment(vision.time).add(10, 'minutes').toDate(),
         },
       });
 
       if (!customerEntry) {
-        console.log(`❌ Customer entry missing for Vision input at centre ${vision.centreId}`);
+        
 
         // Send SSE to all connected clients immediately
         sendSSEToAll({
@@ -104,7 +100,6 @@ const checkMissedEntries = async () => {
           visionId: vision._id,
         });
 
-        console.log(`Sent SSE for missed customer entry at centre ${vision.centreId}`);
       }
     }
 
