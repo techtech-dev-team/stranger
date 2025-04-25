@@ -17,16 +17,6 @@ const sendSSE = (data, res) => {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 };
 
-const sendSSEToAll = (data) => {
-  console.log(`Broadcasting to ${sseClients.length} clients:`, data);
-  sseClients.forEach(client => {
-    try {
-      sendSSE(data, client.res);
-    } catch (error) {
-      console.error('Error sending SSE to client:', error);
-    }
-  });
-};
 // SSE Endpoint to subscribe to live notifications
 const sseHandler = (req, res) => {
   console.log('SSE client connected');
@@ -98,12 +88,21 @@ const checkMissedEntries = async () => {
 
       if (!visionEntry && !alreadyLogged) {
         console.log(`❌ Vision entry missing for ${customer.name}`);
-
+        
         const visionManager = await User.findOne({ role: 'Vision', centreIds: customer.centreId });
         if (visionManager) {
-          const message = `Missed Vision Entry for Centre: ${customer.centreId}`;
+          const message = `Vision entry missing for ${customer.name}`;
+
           sendNotification(visionManager._id, message);
-          sendSSEToAll({ type: 'MissedEntry', message });
+
+          // Send to all connected clients with full details
+          sendSSEToAll({
+            type: 'MissedEntry',
+            message: `Vision entry missing for ${customer.name}`,
+            customerId: customer._id,
+            customerName: customer.name,
+            centreId: customer.centreId,
+          });
         }
 
         await MissedEntry.create({
@@ -156,6 +155,7 @@ const checkMissedEntries = async () => {
     console.error('Error in checkMissedEntries:', error);
   }
 };
+
 
 
 module.exports = { checkMissedEntries, sseHandler };
