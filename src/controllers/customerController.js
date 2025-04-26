@@ -771,6 +771,47 @@ const getCustomersByCentre = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+const getCustomersByCentreAndDate = async (req, res) => {
+  try {
+    const { centreId } = req.params;
+    const { selectedDate } = req.query;
+
+    // Validate centreId
+    if (!mongoose.isValidObjectId(centreId)) {
+      return res.status(400).json({ message: 'Invalid Centre ID' });
+    }
+
+    // Validate selectedDate
+    if (!selectedDate) {
+      return res.status(400).json({ message: 'Selected date is required in YYYY-MM-DD format' });
+    }
+
+    const startOfDay = new Date(selectedDate);
+    const endOfDay = new Date(selectedDate);
+    endOfDay.setHours(23, 59, 59, 999); // Include the entire day
+
+    // Find customers belonging to the given centre and created on the selected date
+    const customers = await Customer.find({
+      centreId,
+      createdAt: { $gte: startOfDay, $lte: endOfDay },
+    })
+      .populate('service')
+      .populate('staffAttending')
+      .populate('branchId')
+      .populate('centreId')
+      .populate('regionId')
+      .exec();
+
+    if (!customers.length) {
+      return res.status(404).json({ message: 'No customers found for this centre on the selected date' });
+    }
+
+    res.status(200).json({ message: 'Customers retrieved successfully', customers });
+  } catch (error) {
+    console.error('Error fetching customers by centre and date:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
 
 const updateCustomer = async (req, res) => {
   try {
@@ -978,4 +1019,4 @@ const getRecentCustomersByCentreId = async (req, res) => {
 
 
 
-module.exports = {getDashboardBlocks ,getRecentCustomersByCentreId ,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers,deleteCustomer};
+module.exports = {getDashboardBlocks, getCustomersByCentreAndDate ,getRecentCustomersByCentreId ,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers,deleteCustomer};
