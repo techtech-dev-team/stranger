@@ -201,6 +201,32 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
+exports.getClubStaffByCentreId = async (req, res) => {
+  try {
+    const { centreId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(centreId)) {
+      return res.status(400).json({ message: "Invalid centre ID format" });
+    }
+
+    const clubStaffUsers = await User.find({ role: "ClubStaff", centreIds: centreId })
+      .populate("branchIds")
+      .populate("centreIds")
+      .populate("regionIds");
+
+    if (!clubStaffUsers.length) {
+      return res.status(404).json({ message: "No club staff users found for the selected centre" });
+    }
+
+    res.json(clubStaffUsers);
+  } catch (error) {
+    console.error("Error retrieving club staff by centre ID:", error);
+    res.status(500).json({
+      message: "Error retrieving club staff users",
+      error: error.message,
+    });
+  }
+};
 
 
 
