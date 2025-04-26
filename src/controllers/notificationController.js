@@ -38,7 +38,6 @@ const registerSSEClient = (req, res) => {
   });
 };
 
-
 const checkMissedEntries = async () => {
   try {
     console.log('Checking missed entries...');
@@ -55,6 +54,7 @@ const checkMissedEntries = async () => {
     const recentCustomers = await Customer.find({ createdAt: { $gte: tenMinutesAgo } });
     console.log(`Found ${recentCustomers.length} recent customers.`);
 
+    // Commenting out the customer-related logic
     for (const customer of recentCustomers) {
       if (processedCustomerIds.has(customer._id.toString())) continue;
 
@@ -70,25 +70,23 @@ const checkMissedEntries = async () => {
         );
       });
 
+      // Show the message about no vision entry for the customer
       if (!matchedVision) {
         const centre = await Centre.findById(customer.centreId);
-
-        // If no centre is found, use a fallback message
         const centreId = centre ? centre.centreId : 'Unknown Centre';
+
+        // Log and send a message about the missed Vision entry for the customer
         console.log(`[⚠️ Missed Vision] No vision found for customer ${customer.name} (ID: ${customer._id}) at Centre ${centreId}`);
 
-        // Ensure only one notification is sent for missed customer
-        if (!processedCustomerIds.has(customer._id.toString())) {
-          sendSSEToAll({
-            type: 'MissedEntry',
-            message: `Vision entry missing for ${customer.name}`,
-            customerId: customer._id,
-            customerName: customer.name,
-            centreId: centreId,
-          });
+        sendSSEToAll({
+          type: 'MissedEntry',
+          message: `No Vision entry found for customer ${customer.name}`,
+          customerId: customer._id,
+          customerName: customer.name,
+          centreId: centreId,
+        });
 
-          processedCustomerIds.add(customer._id.toString());
-        }
+        processedCustomerIds.add(customer._id.toString());
       }
     }
 
@@ -100,33 +98,29 @@ const checkMissedEntries = async () => {
 
       const visionTime = new Date(vision.time);
 
-      const matchingCustomer = await Customer.findOne({
-        centreId: vision.centreId,
-        inTime: {
-          $gte: moment(visionTime).subtract(10, 'minutes').toDate(),
-          $lte: moment(visionTime).add(10, 'minutes').toDate(),
-        },
-      });
+      // Commenting out the matching customer logic for Vision entries
+      // const matchingCustomer = await Customer.findOne({
+      //   centreId: vision.centreId,
+      //   inTime: {
+      //     $gte: moment(visionTime).subtract(10, 'minutes').toDate(),
+      //     $lte: moment(visionTime).add(10, 'minutes').toDate(),
+      //   },
+      // });
 
-      if (!matchingCustomer) {
-        const centre = await Centre.findById(vision.centreId);
+      // Commenting out the logic for missed CM notification
+      // const centre = await Centre.findById(vision.centreId);
+      // const centreId = centre ? centre.centreId : 'Unknown Centre';
+      // console.log(`[⚠️ Missed CM] No CM found for Vision entry (ID: ${vision._id}) at ${visionTime} - Centre: ${centreId}`);
 
-        // If no centre is found, use a fallback message
-        const centreId = centre ? centre.centreId : 'Unknown Centre';
-        console.log(`[⚠️ Missed CM] No CM found for Vision entry (ID: ${vision._id}) at ${visionTime} - Centre: ${centreId}`);
+      // // Send Vision-related missed entry notification
+      // sendSSEToAll({
+      //   type: 'MissedEntry',
+      //   message: `Customer entry missing for Vision input at centre ${centreId}`,
+      //   centreId: centreId,
+      //   visionId: vision._id,
+      // });
 
-        // Ensure only one notification is sent for missed vision
-        if (!processedVisionIds.has(vision._id.toString())) {
-          sendSSEToAll({
-            type: 'MissedEntry',
-            message: `Customer entry missing for Vision input at centre ${centreId}`,
-            centreId: centreId,
-            visionId: vision._id,
-          });
-
-          processedVisionIds.add(vision._id.toString());
-        }
-      }
+      processedVisionIds.add(vision._id.toString());
     }
 
     console.log(`✅ Missed entries check completed at ${new Date().toISOString()}`);
@@ -134,6 +128,10 @@ const checkMissedEntries = async () => {
     console.error('❌ Error in checkMissedEntries:', error);
   }
 };
+
+
+
+
 
 
 
