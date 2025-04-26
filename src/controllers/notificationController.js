@@ -60,15 +60,15 @@ const checkMissedEntries = async () => {
 
       console.log(`[CM CHECK] Looking for Vision near ${customer.name}'s inTime (${customer.inTime}) at Centre: ${customer.centreId}`);
 
-      // Convert customer inTime to Date (it's already a Date object)
+      // Convert customer inTime to Date
       const customerInTime = new Date(customer.inTime);
 
       const matchedVision = recentVisionEntries.find(vision => {
         const visionTime = new Date(vision.time); // Convert the Vision time from ISO string to Date
         
-        // Get the first three digits of centreId for comparison
-        const visionCentreIdPrefix = vision.nameOrCode.substring(0, 3); // First 3 digits of nameOrCode
-        const customerCentreIdPrefix = customer.centreId.toString().substring(0, 3); // First 3 digits of customer's centreId
+        // Extract the first three characters from nameOrCode (for Vision entry) and centreId (for Customer)
+        const visionCentreIdPrefix = vision.nameOrCode.slice(0, 3); // First 3 digits of nameOrCode
+        const customerCentreIdPrefix = customer.centreId.toString().slice(0, 3); // First 3 digits of customer's centreId
 
         console.log(`[CM CHECK] Comparing times: Customer InTime: ${customerInTime}, Vision Time: ${visionTime}`);
         console.log(`[CM CHECK] Checking if centreId matches: ${visionCentreIdPrefix} === ${customerCentreIdPrefix}`);
@@ -105,6 +105,8 @@ const checkMissedEntries = async () => {
     console.error('❌ Error in checkMissedEntries:', error);
   }
 };
+
+
 
 
 
