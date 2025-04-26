@@ -38,10 +38,6 @@ const registerSSEClient = (req, res) => {
   });
 };
 
-const alreadyNotified = {
-  customers: new Set(),
-  visions: new Set()
-};
 
 const checkMissedEntries = async () => {
   try {
@@ -81,15 +77,18 @@ const checkMissedEntries = async () => {
         const centreId = centre ? centre.centreId : 'Unknown Centre';
         console.log(`[⚠️ Missed Vision] No vision found for customer ${customer.name} (ID: ${customer._id}) at Centre ${centreId}`);
 
-        sendSSEToAll({
-          type: 'MissedEntry',
-          message: `Vision entry missing for ${customer.name}`,
-          customerId: customer._id,
-          customerName: customer.name,
-          centreId: centreId,  // Ensuring it doesn't remain undefined
-        });
+        // Ensure only one notification is sent for missed customer
+        if (!processedCustomerIds.has(customer._id.toString())) {
+          sendSSEToAll({
+            type: 'MissedEntry',
+            message: `Vision entry missing for ${customer.name}`,
+            customerId: customer._id,
+            customerName: customer.name,
+            centreId: centreId,
+          });
 
-        processedCustomerIds.add(customer._id.toString());
+          processedCustomerIds.add(customer._id.toString());
+        }
       }
     }
 
@@ -116,14 +115,17 @@ const checkMissedEntries = async () => {
         const centreId = centre ? centre.centreId : 'Unknown Centre';
         console.log(`[⚠️ Missed CM] No CM found for Vision entry (ID: ${vision._id}) at ${visionTime} - Centre: ${centreId}`);
 
-        sendSSEToAll({
-          type: 'MissedEntry',
-          message: `Customer entry missing for Vision input at centre ${centreId}`,
-          centreId: centreId,  // Ensuring it doesn't remain undefined
-          visionId: vision._id,
-        });
+        // Ensure only one notification is sent for missed vision
+        if (!processedVisionIds.has(vision._id.toString())) {
+          sendSSEToAll({
+            type: 'MissedEntry',
+            message: `Customer entry missing for Vision input at centre ${centreId}`,
+            centreId: centreId,
+            visionId: vision._id,
+          });
 
-        processedVisionIds.add(vision._id.toString());
+          processedVisionIds.add(vision._id.toString());
+        }
       }
     }
 
@@ -132,6 +134,7 @@ const checkMissedEntries = async () => {
     console.error('❌ Error in checkMissedEntries:', error);
   }
 };
+
 
 
 
