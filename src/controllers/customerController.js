@@ -6,6 +6,7 @@ const Centre = require('../models/Centre');
 const { login } = require('./userController');
 const clients = []; // Store SSE clients
 const moment = require('moment-timezone');
+const Expense = require('../models/Expense'); // Assuming the path to your Expense model
 const addCustomer = async (req, res) => {
   try {
     const {
@@ -1031,8 +1032,8 @@ const getMonthlyCollectionAndExpenses = async (req, res) => {
     const endOfMonth = new Date(endDate);
     endOfMonth.setHours(23, 59, 59, 999); // Include the entire end date
 
-    // Fetch total cash collection, online collection, and expenses
-    const result = await Customer.aggregate([
+    // Fetch total cash collection, online collection
+    const customerData = await Customer.aggregate([
       {
         $match: {
           createdAt: { $gte: startOfMonth, $lte: endOfMonth }
@@ -1043,15 +1044,38 @@ const getMonthlyCollectionAndExpenses = async (req, res) => {
           _id: null,
           totalCashCollection: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
           totalOnlineCollection: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
-          totalExpenses: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } }
         }
       }
     ]);
 
-    const data = result[0] || {
+     // Fetch total expenses from the Expense model
+     const expenseData = await Expense.aggregate([
+      {
+        $match: {
+          expenseDate: { $gte: startOfMonth, $lte: endOfMonth }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalExpenses: { $sum: "$amount" }
+        }
+      }
+    ]);
+
+    const customerResult = customerData[0] || {
       totalCashCollection: 0,
       totalOnlineCollection: 0,
+    };
+
+    const expenseResult = expenseData[0] || {
       totalExpenses: 0
+    };
+
+    const data = {
+      totalCashCollection: customerResult.totalCashCollection,
+      totalOnlineCollection: customerResult.totalOnlineCollection,
+      totalExpenses: expenseResult.totalExpenses
     };
 
     res.status(200).json({
