@@ -1018,6 +1018,52 @@ const getRecentCustomersByCentreId = async (req, res) => {
   }
 };
 
+const getMonthlyCollectionAndExpenses = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    // Validate startDate and endDate
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Start date and end date are required in YYYY-MM-DD format' });
+    }
+
+    const startOfMonth = new Date(startDate);
+    const endOfMonth = new Date(endDate);
+    endOfMonth.setHours(23, 59, 59, 999); // Include the entire end date
+
+    // Fetch total cash collection, online collection, and expenses
+    const result = await Customer.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalCashCollection: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+          totalOnlineCollection: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+          totalExpenses: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } }
+        }
+      }
+    ]);
+
+    const data = result[0] || {
+      totalCashCollection: 0,
+      totalOnlineCollection: 0,
+      totalExpenses: 0
+    };
+
+    res.status(200).json({
+      message: 'Monthly collection and expenses retrieved successfully',
+      data
+    });
+  } catch (error) {
+    console.error('Error fetching monthly collection and expenses:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
 
 
-module.exports = {getDashboardBlocks, getCustomersByCentreAndDate ,getRecentCustomersByCentreId ,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers,deleteCustomer};
+
+module.exports = {getDashboardBlocks,getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate ,getRecentCustomersByCentreId ,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers,deleteCustomer};
