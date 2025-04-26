@@ -1005,17 +1005,18 @@ const getRecentCustomersByCentreId = async (req, res) => {
       .populate('regionId')
       .exec();
 
+  
+
     if (!recentCustomers.length) {
       return res.status(404).json({ message: 'No recent customers found for this centre' });
     }
 
-    res.status(200).json({ message: 'Recent customers retrieved successfully'});
+    res.status(200).json({ message: 'Recent customers retrieved successfully', recentCustomers });
   } catch (error) {
     console.error('Error fetching recent customers by centre:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
 
 
 
