@@ -9,11 +9,11 @@ const moment = require('moment-timezone');
 // SSE function to broadcast messages to all connected clients
 const clients = []; // Array to keep track of connected clients for SSE
 
-const sendSSEToAll = (data) => {
-  clients.forEach(client => {
-    client.res.write(`data: ${JSON.stringify(data)}\n\n`);
-  });
-};
+// const sendSSEToAll = (data) => {
+//   clients.forEach(client => {
+//     client.res.write(`data: ${JSON.stringify(data)}\n\n`);
+//   });
+// };
 
 // Register new SSE client connections
 const registerSSEClient = (req, res) => {
