@@ -45,28 +45,36 @@ const checkMissedEntries = async () => {
     const processedCustomerIds = new Set();
     const processedVisionIds = new Set();
 
+    // Get all Vision entries created in the past hour
     const recentVisionEntries = await Vision.find({
       createdAt: { $gte: moment().subtract(1, 'hour').toDate() }
     });
 
+    // Get all Customer entries created in the past 10 minutes
     const recentCustomers = await Customer.find({ createdAt: { $gte: tenMinutesAgo } });
     console.log(`Found ${recentCustomers.length} recent customers.`);
 
+    // Loop through each customer and check for matching Vision entries
     for (const customer of recentCustomers) {
       if (processedCustomerIds.has(customer._id.toString())) continue;
 
       console.log(`[CM CHECK] Looking for Vision near ${customer.name}'s inTime (${customer.inTime}) at Centre: ${customer.centreId}`);
 
-      // Convert inTime to Date if it's a string, and Vision time also needs to be converted to Date
-      const customerInTime = new Date(customer.inTime); // customer.inTime is a Date object already
+      // Convert customer inTime to Date (it's already a Date object)
+      const customerInTime = new Date(customer.inTime);
+
       const matchedVision = recentVisionEntries.find(vision => {
-        const visionTime = new Date(vision.time);  // Convert the ISO string (vision.time) to Date
+        const visionTime = new Date(vision.time); // Convert the Vision time from ISO string to Date
         
+        // Get the first three digits of centreId for comparison
+        const visionCentreIdPrefix = vision.nameOrCode.substring(0, 3); // First 3 digits of nameOrCode
+        const customerCentreIdPrefix = customer.centreId.toString().substring(0, 3); // First 3 digits of customer's centreId
+
         console.log(`[CM CHECK] Comparing times: Customer InTime: ${customerInTime}, Vision Time: ${visionTime}`);
-        console.log(`[CM CHECK] Checking if centreId matches: ${vision.centreId?.toString()} === ${customer.centreId?.toString()}`);
+        console.log(`[CM CHECK] Checking if centreId matches: ${visionCentreIdPrefix} === ${customerCentreIdPrefix}`);
 
         return (
-          vision.centreId?.toString() === customer.centreId?.toString() &&
+          visionCentreIdPrefix === customerCentreIdPrefix && // Compare first 3 digits
           visionTime >= moment(customerInTime).subtract(10, 'minutes').toDate() &&
           visionTime <= moment(customerInTime).add(10, 'minutes').toDate()
         );
@@ -78,6 +86,7 @@ const checkMissedEntries = async () => {
 
         console.log(`[⚠️ Missed Vision] No vision found for customer ${customer.name} (ID: ${customer._id}) at Centre ${centreId}`);
 
+        // Send missed Vision notification
         sendSSEToAll({
           type: 'MissedEntry',
           message: `No Vision entry found for customer ${customer.name}`,
@@ -86,6 +95,7 @@ const checkMissedEntries = async () => {
           centreId: centreId,
         });
 
+        // Mark this customer as processed to avoid duplicate notifications
         processedCustomerIds.add(customer._id.toString());
       }
     }
@@ -95,6 +105,7 @@ const checkMissedEntries = async () => {
     console.error('❌ Error in checkMissedEntries:', error);
   }
 };
+
 
 
 
