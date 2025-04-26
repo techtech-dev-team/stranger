@@ -735,8 +735,7 @@ const editCustomer = async (req, res) => {
     .exec();
 
     sendSSEEvent({ message: "Customer updated", customer: populatedCustomer });
-    console.log("populatedCustomer",populatedCustomer);
-    
+  
     res.status(200).json({ message: "Customer updated successfully", customer: updatedCustomer });
   } catch (error) {
     console.error("Server Error:", error);
@@ -837,9 +836,8 @@ const updateCustomer = async (req, res) => {
       .exec();
 
     sendSSEEvent({ message: "Customer updated", customer: populatedCustomer });
-    console.log("populatedCustomer", populatedCustomer);
-
-    res.status(200).json({ message: "Customer updated successfully", customer: updatedCustomer });
+    
+    res.status(200).json({ message: "Customer updated successfully" });
   } catch (error) {
     console.error("Server Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -970,7 +968,7 @@ const getRecentCustomersByCentreId = async (req, res) => {
       return res.status(404).json({ message: 'No recent customers found for this centre' });
     }
 
-    res.status(200).json({ message: 'Recent customers retrieved successfully', customers: recentCustomers });
+    res.status(200).json({ message: 'Recent customers retrieved successfully'});
   } catch (error) {
     console.error('Error fetching recent customers by centre:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
