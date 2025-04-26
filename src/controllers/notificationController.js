@@ -63,12 +63,21 @@ const checkMissedEntries = async () => {
       // Convert customer inTime to Date
       const customerInTime = new Date(customer.inTime);
 
+      // Fetch the actual centreId from the Centre collection using customer.centreId
+      const centre = await Centre.findById(customer.centreId);
+      const centreId = centre ? centre.centreId.toString() : null;
+
+      if (!centreId) {
+        console.log(`[⚠️ Missed Vision] No valid Centre found for customer ${customer.name} (ID: ${customer._id})`);
+        continue; // Skip if no valid centreId
+      }
+
       const matchedVision = recentVisionEntries.find(vision => {
         const visionTime = new Date(vision.time); // Convert the Vision time from ISO string to Date
-        
-        // Extract the first three characters from nameOrCode (for Vision entry) and centreId (for Customer)
+
+        // Get the first 3 characters for comparison
         const visionCentreIdPrefix = vision.nameOrCode.slice(0, 3); // First 3 digits of nameOrCode
-        const customerCentreIdPrefix = customer.centreId.toString().slice(0, 3); // First 3 digits of customer's centreId
+        const customerCentreIdPrefix = centreId.slice(0, 3); // First 3 digits of the actual centreId
 
         console.log(`[CM CHECK] Comparing times: Customer InTime: ${customerInTime}, Vision Time: ${visionTime}`);
         console.log(`[CM CHECK] Checking if centreId matches: ${visionCentreIdPrefix} === ${customerCentreIdPrefix}`);
@@ -81,9 +90,6 @@ const checkMissedEntries = async () => {
       });
 
       if (!matchedVision) {
-        const centre = await Centre.findById(customer.centreId);
-        const centreId = centre ? centre.centreId : 'Unknown Centre';
-
         console.log(`[⚠️ Missed Vision] No vision found for customer ${customer.name} (ID: ${customer._id}) at Centre ${centreId}`);
 
         // Send missed Vision notification
@@ -105,8 +111,6 @@ const checkMissedEntries = async () => {
     console.error('❌ Error in checkMissedEntries:', error);
   }
 };
-
-
 
 
 
