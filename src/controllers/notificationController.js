@@ -39,83 +39,98 @@ const registerSSEClient = (req, res) => {
 };
 
 // Missed entry check function
+// 🧠 Global (in-memory) dedupe sets – persists across multiple interval calls
+const notifiedCustomerIds = new Set();
+const notifiedVisionIds = new Set();
+
 const checkMissedEntries = async () => {
   try {
     const tenMinutesAgo = moment().subtract(10, 'minutes').toDate();
-    const processedCustomerIds = new Set(); // To track processed customer IDs
-    const processedVisionIds = new Set(); // To track processed vision IDs
-  
-    // --- 1. Customer Entries ---
+    const processedCustomerIds = new Set();
+    const processedVisionIds = new Set();
+
+    console.log(`[MissedCheck] Starting missed entry check at ${new Date().toISOString()}`);
+
+    // --- 1. CM Check ---
     const recentCustomers = await Customer.find({ createdAt: { $gte: tenMinutesAgo } });
-   
+    console.log(`[CM Check] Found ${recentCustomers.length} recent customer entries.`);
+
     for (const customer of recentCustomers) {
-      if (processedCustomerIds.has(customer._id.toString())) {
-        continue; // Skip if already processed
-      }
-      
+      const customerIdStr = customer._id.toString();
+
+      if (processedCustomerIds.has(customerIdStr) || notifiedCustomerIds.has(customerIdStr)) continue;
+
+      console.log(`[CM Check] Checking customer: ${customer.name}, inTime: ${customer.inTime}, centreId: ${customer.centreId}`);
+
+      const from = moment(customer.inTime).subtract(10, 'minutes').toDate();
+      const to = moment(customer.inTime).add(10, 'minutes').toDate();
+
       const visionEntry = await Vision.findOne({
         centreId: customer.centreId,
-        time: {
-          $gte: moment(customer.inTime).subtract(10, 'minutes').toISOString(),
-          $lte: moment(customer.inTime).add(10, 'minutes').toISOString(),
-        },
+        time: { $gte: from, $lte: to },
       });
 
       if (!visionEntry) {
-     
-    
-        // Fetch the actual centreId from the Centre model
+        console.warn(`[CM Check] ❌ No Vision entry found for customer: ${customer.name} at centre ${customer.centreId}`);
+
         const centre = await Centre.findById(customer.centreId);
-    
-        // Send SSE to all connected clients immediately
+
         sendSSEToAll({
           type: 'MissedEntry',
           message: `Vision entry missing for ${customer.name}`,
           customerId: customer._id,
           customerName: customer.name,
-          centreId: centre ? centre.centreId : 'Unknown Centre', // Use the actual centreId or fallback
+          centreId: centre ? centre.centreId : 'Unknown Centre',
         });
-        processedCustomerIds.add(customer._id.toString()); // Mark as processed
-    
+
+        notifiedCustomerIds.add(customerIdStr); // 🔐 Add to global dedupe
+        processedCustomerIds.add(customerIdStr);
+      } else {
+        console.log(`[CM Check] ✅ Vision entry found for customer: ${customer.name}`);
       }
     }
 
-    // --- 2. Vision Entries ---
+    // --- 2. Vision Check ---
     const recentVisionEntries = await Vision.find({ time: { $gte: tenMinutesAgo } });
-    console.log(`Found ${recentVisionEntries.length} recent Vision entries.`);
+    console.log(`[Vision Check] Found ${recentVisionEntries.length} recent vision entries.`);
 
     for (const vision of recentVisionEntries) {
-      if (processedVisionIds.has(vision._id.toString())) {
-        continue; // Skip if already processed
-      }
+      const visionIdStr = vision._id.toString();
+
+      if (processedVisionIds.has(visionIdStr) || notifiedVisionIds.has(visionIdStr)) continue;
+
+      console.log(`[Vision Check] Checking vision entry: ${vision._id}, time: ${vision.time}, centreId: ${vision.centreId}`);
+
+      const from = moment(vision.time).subtract(10, 'minutes').toDate();
+      const to = moment(vision.time).add(10, 'minutes').toDate();
 
       const customerEntry = await Customer.findOne({
         centreId: vision.centreId,
-        inTime: {
-          $gte: moment(vision.time).subtract(10, 'minutes').toDate(),
-          $lte: moment(vision.time).add(10, 'minutes').toDate(),
-        },
+        inTime: { $gte: from, $lte: to },
       });
 
       if (!customerEntry) {
-        
+        console.warn(`[Vision Check] ❌ No Customer entry found for Vision input at centre ${vision.centreId}`);
 
-        // Send SSE to all connected clients immediately
         sendSSEToAll({
           type: 'MissedEntry',
           message: `Customer entry missing for Vision input at centre ${vision.centreId}`,
           centreId: vision.centreId,
           visionId: vision._id,
         });
-        processedVisionIds.add(vision._id.toString()); // Mark as processed
 
+        notifiedVisionIds.add(visionIdStr); // 🔐 Add to global dedupe
+        processedVisionIds.add(visionIdStr);
+      } else {
+        console.log(`[Vision Check] ✅ Customer entry found for Vision input at centre ${vision.centreId}`);
       }
     }
 
-    console.log(`Missed entries check completed.`);
+    console.log(`[MissedCheck] Completed missed entry check.`);
   } catch (error) {
-    console.error('Error in checkMissedEntries:', error);
+    console.error('[MissedCheck] Error:', error);
   }
 };
+
 
 module.exports = { checkMissedEntries, registerSSEClient };
