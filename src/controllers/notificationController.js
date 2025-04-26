@@ -45,87 +45,83 @@ const alreadyNotified = {
 
 const checkMissedEntries = async () => {
   try {
-    console.log('Checking missed entries...');
     const tenMinutesAgo = moment().subtract(10, 'minutes').toDate();
-    const processedCustomerIds = new Set();
-    const processedVisionIds = new Set();
+    const now = new Date();
 
-    // Get all Vision entries created recently (you can adjust this time window)
-    const recentVisionEntries = await Vision.find({
-      createdAt: { $gte: moment().subtract(1, 'hour').toDate() }
-    });
-
-    // --- 1. Check Customer entries ---
     const recentCustomers = await Customer.find({ createdAt: { $gte: tenMinutesAgo } });
-    console.log(`Found ${recentCustomers.length} recent customers.`);
+    const recentVisions = await Vision.find({ time: { $gte: tenMinutesAgo } });
 
+    console.log(`Checking missed entries...`);
+    console.log(`Found ${recentCustomers.length} recent customers.`);
+    console.log(`Found ${recentVisions.length} recent vision entries.`);
+
+    // --- 1. Customer entries -> Check for missing vision
     for (const customer of recentCustomers) {
-      if (processedCustomerIds.has(customer._id.toString())) continue;
+      const customerId = customer._id.toString();
+      if (alreadyNotified.customers.has(customerId)) continue;
+
+      const from = moment(customer.inTime).subtract(10, 'minutes').toDate();
+      const to = moment(customer.inTime).add(10, 'minutes').toDate();
 
       console.log(`[CM CHECK] Looking for Vision near ${customer.name}'s inTime (${customer.inTime}) at Centre: ${customer.centreId}`);
 
-      // Match vision manually (since vision.time is string)
-      const matchedVision = recentVisionEntries.find(vision => {
-        const visionTime = new Date(vision.time);
-        return (
-          vision.centreId?.toString() === customer.centreId?.toString() &&
-          visionTime >= moment(customer.inTime).subtract(10, 'minutes').toDate() &&
-          visionTime <= moment(customer.inTime).add(10, 'minutes').toDate()
-        );
+      const match = await Vision.findOne({
+        centreId: customer.centreId,
+        time: { $gte: from, $lte: to }
       });
 
-      if (!matchedVision) {
+      if (!match) {
         const centre = await Centre.findById(customer.centreId);
-        console.log(`[⚠️ Missed Vision] No vision found for customer ${customer.name} (ID: ${customer._id}) at Centre ${centre?.centreId}`);
+
+        console.log(`[⚠️ Missed Vision] No vision found for customer ${customer.name} (ID: ${customerId}) at Centre ${centre?.centreId || 'Unknown'}`);
 
         sendSSEToAll({
           type: 'MissedEntry',
           message: `Vision entry missing for ${customer.name}`,
-          customerId: customer._id,
+          customerId: customerId,
           customerName: customer.name,
-          centreId: centre ? centre.centreId : 'Unknown Centre',
+          centreId: centre?.centreId || 'Unknown Centre',
         });
 
-        processedCustomerIds.add(customer._id.toString());
+        alreadyNotified.customers.add(customerId);
       }
     }
 
-    // --- 2. Check Vision entries ---
-    console.log(`Found ${recentVisionEntries.length} recent Vision entries.`);
+    // --- 2. Vision entries -> Check for missing customer
+    for (const vision of recentVisions) {
+      const visionId = vision._id.toString();
+      if (alreadyNotified.visions.has(visionId)) continue;
 
-    for (const vision of recentVisionEntries) {
-      if (processedVisionIds.has(vision._id.toString())) continue;
+      const from = moment(vision.time).subtract(10, 'minutes').toDate();
+      const to = moment(vision.time).add(10, 'minutes').toDate();
 
-      const visionTime = new Date(vision.time);
+      console.log(`[VISION CHECK] Looking for Customer near Vision (${vision.time}) at Centre: ${vision.centreId}`);
 
-      const matchingCustomer = await Customer.findOne({
+      const match = await Customer.findOne({
         centreId: vision.centreId,
-        inTime: {
-          $gte: moment(visionTime).subtract(10, 'minutes').toDate(),
-          $lte: moment(visionTime).add(10, 'minutes').toDate(),
-        },
+        inTime: { $gte: from, $lte: to }
       });
 
-      if (!matchingCustomer) {
-        console.log(`[⚠️ Missed CM] No CM found for Vision entry (ID: ${vision._id}) at ${visionTime} - Centre: ${vision.centreId}`);
+      if (!match) {
+        console.log(`[⚠️ Missed CM] No customer entry found for vision input (ID: ${visionId}) at Centre ${vision.centreId}`);
 
         sendSSEToAll({
           type: 'MissedEntry',
           message: `Customer entry missing for Vision input at centre ${vision.centreId}`,
           centreId: vision.centreId,
-          visionId: vision._id,
+          visionId: visionId,
         });
 
-        processedVisionIds.add(vision._id.toString());
+        alreadyNotified.visions.add(visionId);
       }
     }
 
     console.log(`✅ Missed entries check completed at ${new Date().toISOString()}`);
+
   } catch (error) {
-    console.error('❌ Error in checkMissedEntries:', error);
+    console.error('💥 Error in checkMissedEntries:', error);
   }
 };
-
 
 
 module.exports = { checkMissedEntries, registerSSEClient };
