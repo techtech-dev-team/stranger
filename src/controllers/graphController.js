@@ -51,7 +51,7 @@ const calculateSales = async (centreId, startDate, endDate) => {
     _id: date,
     ...salesByDate[date]
   }));
-  console.log('salesData', salesData);
+  
   
   return salesData;
 };

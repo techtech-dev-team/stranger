@@ -110,7 +110,7 @@ exports.updateCustomerStatus = async (req, res) => {
             .exec();
 
         sendSSEEvent({ message: 'Customer status updated', populatedCustomer });
-        console.log("populatedCustomer", populatedCustomer)
+        
 
         res.status(200).json({ message: 'Customer updated successfully', populatedCustomer });
     

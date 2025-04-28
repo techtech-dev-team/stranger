@@ -387,7 +387,7 @@ const getCentreSalesReport = async (req, res) => {
     });
 
     const endTime = Date.now();
-    console.log(`🚀 Report built in ${endTime - startTime}ms`);
+    
 
     res.status(200).json({
       message: "Sales report retrieved successfully",
@@ -570,7 +570,7 @@ const getSalesGraphData = async (req, res) => {
 const getCentreSalesReportDaily = async (req, res) => {
   try {
     const { centreId, selectedDate } = req.query;
-    console.log(`Fetching sales report for date: ${selectedDate}`);
+    
 
     if (!selectedDate) {
       return res.status(400).json({ message: 'Please provide a valid date' });
@@ -692,7 +692,7 @@ const editCustomer = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    console.log(updates);
+    
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid customer ID" });
@@ -708,7 +708,7 @@ const editCustomer = async (req, res) => {
       return res.status(404).json({ message: "Centre not found" });
     }
 
-    console.log("Centre Pay Criteria:", centre.payCriteria);
+    
 
     const newPaymentCash2 = Number(updates.paymentCash2) || 0;
     const cashCommissionAmount = Number(updates.cashCommission) || 0;
@@ -854,7 +854,7 @@ const updateCustomer = async (req, res) => {
       return res.status(404).json({ message: "Centre not found" });
     }
 
-    console.log("Centre Pay Criteria:", centre.payCriteria);
+  
 
     let balanceUpdate = 0;
     if (centre.payCriteria === "plus") {
