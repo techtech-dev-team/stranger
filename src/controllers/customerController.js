@@ -737,7 +737,7 @@ const editCustomer = async (req, res) => {
 
     sendSSEEvent({ message: "Customer updated", customer: populatedCustomer });
   
-    res.status(200).json({ message: "Customer updated successfully", customer: updatedCustomer });
+    // res.status(200).json({ message: "Customer updated successfully", customer: updatedCustomer });
   } catch (error) {
     console.error("Server Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
