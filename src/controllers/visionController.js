@@ -96,15 +96,13 @@ exports.getAllEntriesFast = async (req, res) => {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    console.time("entries-query");
-
     const entries = await Vision.find({
       createdAt: { $gte: startOfDay, $lte: endOfDay }
     })
       .sort({ createdAt: -1 })
       .lean();
 
-    console.timeEnd("entries-query");
+
 
     if (!entries.length) {
       return res.status(404).json({ message: "No entries found for this date" });
