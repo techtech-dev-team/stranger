@@ -13,8 +13,8 @@ const userSchema = new mongoose.Schema(
     centreIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Centre" }],
     regionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Region" }],
     name: { type: String, required: true },
-    mobileNumber: { type: String },
-    email: { type: String },
+    mobileNumber: { type: String, default: null, },
+    email: { type: String, default: null,},
     status: {
       type: String,
       required: true,
@@ -24,7 +24,6 @@ const userSchema = new mongoose.Schema(
     aadharOrPanNumber: {
       type: String,
       unique: true,
-      sparse: true, // THIS is the magic
       default: null,
     }
 ,    
