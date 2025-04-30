@@ -96,7 +96,7 @@ exports.registerUser = async (req, res) => {
 };
 
 
-exports.login = async (req, res) => {
+ exports.login = async (req, res) => {
   try {
     const { loginId, pin } = req.body;
 
@@ -132,12 +132,56 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+exports.loginArea = async (req, res) => {
+  try {
+    const { loginId, pin } = req.body;
+
+    const user = await User.findOne({ loginId });
+
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    if (user.pin !== pin) {
+      return res.status(401).json({ message: "Invalid PIN" });
+    }
+
+    // ✅ Include all user details in userPayload
+    const userPayload = { ...user._doc };
+
+    // ✅ Generate JWT Token
+    const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict"
+    });
+
+    // ✅ Inject safe centres logic here (non-breaking)
+    const responsePayload = {
+      message: "Login successful",
+      token,
+      user: userPayload,
+      role: user.role,
+    };
+
+    // 🛡️ Optional: If safeCentres exists, include it
+    if (user.safeCentres && Array.isArray(user.safeCentres)) {
+      responsePayload.safeCentres = user.safeCentres;
+    }
+
+    res.status(200).json(responsePayload);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
 
 exports.login2 = async (req, res) => {
   try {
     const { loginId, pin } = req.body;
 
-    const user = await User.findOne({ loginId }); // Use .lean() to reduce overhead
+    const user = await User.findOne({ loginId }).lean(); // Use .lean() to reduce overhead
 
     if (!user) {
       return res.status(401).json({ message: "User not found" });
