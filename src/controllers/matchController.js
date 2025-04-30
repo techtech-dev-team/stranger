@@ -39,8 +39,7 @@ exports.matchEntries = async (req, res) => {
 
         let timeDifference = Math.abs(visionTime - customerTime) / (1000 * 60);
 
-        console.log(`Vision Time: ${visionTime.toISOString()} | Customer Time: ${customerTime.toISOString()}`);
-        console.log(`Time Difference: ${timeDifference} minutes`);
+        
 
         if (timeDifference <= 15) {
           matchedEntries.push({ vision, customer });
