@@ -136,7 +136,7 @@ exports.loginArea = async (req, res) => {
   try {
     const { loginId, pin } = req.body;
 
-    const user = await User.findOne({ loginId }).lean(); // lean for performance
+    const user = await User.findOne({ loginId }); // lean for performance
 
     if (!user) {
       return res.status(401).json({ message: "User not found" });
