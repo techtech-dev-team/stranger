@@ -136,29 +136,35 @@ exports.loginArea = async (req, res) => {
   try {
     const { loginId, pin } = req.body;
 
+    // Find user by loginId
     const user = await User.findOne({ loginId });
 
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
 
+    // Validate PIN
     if (user.pin !== pin) {
       return res.status(401).json({ message: "Invalid PIN" });
     }
 
-    // ✅ Include all user details in userPayload
-    const userPayload = { ...user._doc };
+    // Minimal user data for the JWT token (excluding large data like safeCentres)
+    const userPayload = {
+      userId: user._id,
+      role: user.role
+    };
 
-    // ✅ Generate JWT Token
+    // Generate JWT token with a minimal payload
     const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
+    // Set JWT token in the cookie
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "Strict"
     });
 
-    // ✅ Inject safe centres logic here (non-breaking)
+    // Prepare the response payload
     const responsePayload = {
       message: "Login successful",
       token,
@@ -166,16 +172,19 @@ exports.loginArea = async (req, res) => {
       role: user.role,
     };
 
-    // 🛡️ Optional: If safeCentres exists, include it
+    // Fetch the large data (safeCentres) if necessary
     if (user.safeCentres && Array.isArray(user.safeCentres)) {
       responsePayload.safeCentres = user.safeCentres;
     }
 
     res.status(200).json(responsePayload);
+
   } catch (error) {
+    console.error(error); // Optional: Log the error to the server console
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
 
 exports.login2 = async (req, res) => {
   try {
