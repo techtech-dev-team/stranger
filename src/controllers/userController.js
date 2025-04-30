@@ -137,7 +137,7 @@ exports.login2 = async (req, res) => {
   try {
     const { loginId, pin } = req.body;
 
-    const user = await User.findOne({ loginId }).lean(); // Use .lean() to reduce overhead
+    const user = await User.findOne({ loginId }); // Use .lean() to reduce overhead
 
     if (!user) {
       return res.status(401).json({ message: "User not found" });
