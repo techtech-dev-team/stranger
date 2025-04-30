@@ -132,6 +132,8 @@ exports.registerUser = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
+
 exports.loginArea = async (req, res) => {
   try {
     const { loginId, pin } = req.body;
@@ -146,36 +148,55 @@ exports.loginArea = async (req, res) => {
       return res.status(401).json({ message: "Invalid PIN" });
     }
 
-    // ✅ Include all user details in userPayload
-    const userPayload = { ...user._doc };
+    // ✅ Only essential info goes in the token
+    const userPayload = {
+      _id: user._id,
+      loginId: user.loginId,
+      name: user.name,
+      role: user.role,
+      status: user.status,
+    };
 
-    // ✅ Generate JWT Token
+    // ✅ Create JWT (lightweight)
     const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
+    // ✅ Set secure cookie
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "Strict"
+      sameSite: "Strict",
     });
 
-    // ✅ Inject safe centres logic here (non-breaking)
+    // ✅ Prepare trimmed down response
     const responsePayload = {
       message: "Login successful",
       token,
       user: userPayload,
-      role: user.role,
+      centresCount: user.centreIds.length,
+      // optional but useful summary
     };
 
-    // 🛡️ Optional: If safeCentres exists, include it
-    if (user.safeCentres && Array.isArray(user.safeCentres)) {
-      responsePayload.safeCentres = user.safeCentres;
+    // ✅ Send large fields *outside* the token
+    if (user.centreIds && Array.isArray(user.centreIds)) {
+      responsePayload.centreIds = user.centreIds;
+    }
+
+    if (user.regionIds && Array.isArray(user.regionIds)) {
+      responsePayload.regionIds = user.regionIds;
+    }
+
+    if (user.branchIds && Array.isArray(user.branchIds)) {
+      responsePayload.branchIds = user.branchIds;
     }
 
     res.status(200).json(responsePayload);
+
   } catch (error) {
+    console.error("Login Error:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
 
 exports.login2 = async (req, res) => {
   try {
