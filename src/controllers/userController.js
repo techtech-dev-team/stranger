@@ -31,8 +31,6 @@ exports.registerUser = async (req, res) => {
       status = "Active",
     } = req.body;
 
-    console.log("Request Body:", req.body); // Log the request body
-
     // Clean invalid ObjectIds (e.g. empty strings)
     const cleanedBranchIds = branchIds.filter(id => id);
     const cleanedCentreIds = centreIds.filter(id => id);
@@ -83,8 +81,6 @@ exports.registerUser = async (req, res) => {
           ? aadharOrPanNumber.trim()
           : null,
     });
-
-    console.log("New User Object:", newUser); // Log the new user object before saving
 
     await newUser.save();
 
