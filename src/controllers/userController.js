@@ -148,16 +148,21 @@ exports.loginArea = async (req, res) => {
       return res.status(401).json({ message: "Invalid PIN" });
     }
 
-    // Minimal user data for the JWT token (excluding large data like safeCentres)
+    // Ensure the user has a valid userId
+    if (!user._id) {
+      return res.status(400).json({ message: "Invalid user data, userId missing" });
+    }
+
+    // Minimal user data for the JWT token (userId and role)
     const userPayload = {
-      userId: user._id,
+      userId: user._id, // This is where the userId is passed
       role: user.role
     };
 
-    // Generate JWT token with a minimal payload
+    // Generate JWT token with userId in the payload
     const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-    // Set JWT token in the cookie
+    // Set the JWT token in a secure, HttpOnly cookie
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -168,19 +173,14 @@ exports.loginArea = async (req, res) => {
     const responsePayload = {
       message: "Login successful",
       token,
-      user: userPayload,
+      user: userPayload, // Send the user data without sensitive info
       role: user.role,
     };
-
-    // Fetch the large data (safeCentres) if necessary
-    if (user.safeCentres && Array.isArray(user.safeCentres)) {
-      responsePayload.safeCentres = user.safeCentres;
-    }
 
     res.status(200).json(responsePayload);
 
   } catch (error) {
-    console.error(error); // Optional: Log the error to the server console
+    console.error(error); // Log the error for debugging
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
