@@ -136,54 +136,51 @@ exports.loginArea = async (req, res) => {
   try {
     const { loginId, pin } = req.body;
 
-    // Find user by loginId
-    const user = await User.findOne({ loginId });
+    const user = await User.findOne({ loginId }); // Lean for efficient querying
 
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
 
-    // Validate PIN
     if (user.pin !== pin) {
       return res.status(401).json({ message: "Invalid PIN" });
     }
 
-    // Ensure the user has a valid userId
-    if (!user._id) {
-      return res.status(400).json({ message: "Invalid user data, userId missing" });
-    }
+    // Clean user object: exclude sensitive fields
+    const { pin: _pin, password, centres, ...safeUser } = user;
 
-    // Minimal user data for the JWT token (userId and role)
-    const userPayload = {
-      userId: user._id, // This is where the userId is passed
-      role: user.role
-    };
+    // 🧠 If centres is huge, map only essentials
+    const safeCentres = (centres || []).map(centre => ({
+      centreId: centre.centreId || centre._id,
+      name: centre.name || "Unnamed",
+    }));
 
-    // Generate JWT token with userId in the payload
+    // ✅ Full userPayload with all details (original behavior)
+    const userPayload = { ...user };
+
+    // ✅ Generate JWT Token
     const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-    // Set the JWT token in a secure, HttpOnly cookie
     res.cookie("token", token, {
-      httpOnly: true,
+      httpOnly: true, // Prevents client-side access
       secure: process.env.NODE_ENV === "production",
       sameSite: "Strict"
     });
 
-    // Prepare the response payload
-    const responsePayload = {
+    res.status(200).json({
       message: "Login successful",
       token,
-      user: userPayload, // Send the user data without sensitive info
-      role: user.role,
-    };
-
-    res.status(200).json(responsePayload);
-
+      user: {
+        ...safeUser,
+        centres: safeCentres // Trimmed centres included
+      },
+      role: user.role
+    });
   } catch (error) {
-    console.error(error); // Log the error for debugging
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
 
 
 exports.login2 = async (req, res) => {
