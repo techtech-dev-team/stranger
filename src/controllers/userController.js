@@ -148,6 +148,7 @@ exports.loginArea = async (req, res) => {
 
     // ✅ Extract only the fields you need for JWT
     const userPayload = {
+      _id: user._id, // <-- add this line
       userId: user.userId,
       loginId: user.loginId,
       role: user.role,
