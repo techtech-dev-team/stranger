@@ -136,7 +136,7 @@ exports.loginArea = async (req, res) => {
   try {
     const { loginId, pin } = req.body;
 
-    const user = await User.findOne({ loginId }); // Lean for efficient querying
+    const user = await User.findOne({ loginId });
 
     if (!user) {
       return res.status(401).json({ message: "User not found" });
@@ -146,36 +146,32 @@ exports.loginArea = async (req, res) => {
       return res.status(401).json({ message: "Invalid PIN" });
     }
 
-    // Clean user object: exclude sensitive fields
-    const { pin: _pin, password, centres, ...safeUser } = user;
-
-    // 🧠 If centres is huge, map only essentials
-    const safeCentres = (centres || []).map(centre => ({
-      centreId: centre.centreId || centre._id,
-      name: centre.name || "Unnamed",
-    }));
-
-    // ✅ Full userPayload with all details (original behavior)
-    const userPayload = { ...user };
+    // ✅ Include all user details in userPayload
+    const userPayload = { ...user._doc };
 
     // ✅ Generate JWT Token
     const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     res.cookie("token", token, {
-      httpOnly: true, // Prevents client-side access
+      httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "Strict"
     });
 
-    res.status(200).json({
+    // ✅ Inject safe centres logic here (non-breaking)
+    const responsePayload = {
       message: "Login successful",
       token,
-      user: {
-        ...safeUser,
-        centres: safeCentres // Trimmed centres included
-      },
-      role: user.role
-    });
+      user: userPayload,
+      role: user.role,
+    };
+
+    // 🛡️ Optional: If safeCentres exists, include it
+    if (user.safeCentres && Array.isArray(user.safeCentres)) {
+      responsePayload.safeCentres = user.safeCentres;
+    }
+
+    res.status(200).json(responsePayload);
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
