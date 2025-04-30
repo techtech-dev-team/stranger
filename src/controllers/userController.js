@@ -200,6 +200,18 @@ exports.getAllUsers = async (req, res) => {
     res.status(500).json({ message: "Error retrieving users", error: error.message });
   }
 };
+exports.getAllUsersExceptStaff = async (req, res) => {
+  try {
+    const users = await User.find({ role: { $ne: "ClubStaff" } })
+      .populate("branchIds")
+      .populate("centreIds")
+      .populate("regionIds");
+
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Error retrieving users", error: error.message });
+  }
+};
 
 exports.getClubStaffByCentreId = async (req, res) => {
   try {
