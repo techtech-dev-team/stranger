@@ -457,15 +457,16 @@ exports.getCentreReport = async (req, res) => {
     const totalSales = salesReport.length > 0 ? salesReport[0].grandTotal : 0;
     const onlineCommission = salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0;
     const cashCommission = salesReport.length > 0 ? salesReport[0].totalCashCommission : 0; // <-- ADD THIS
-
     const balance = totalSales - totalExpense - totalOnline;
 
+   
     let finalTotal;
     if (center.payCriteria === "plus") {
       finalTotal = balance + cashCommission;
     } else {
       finalTotal = balance - cashCommission;
     }
+    
 
     res.status(200).json({
       success: true,
@@ -474,7 +475,7 @@ exports.getCentreReport = async (req, res) => {
         totalSales: salesReport.length > 0 ? salesReport[0].grandTotal : 0,
         totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
         totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
-        totalOnline: salesReport.length > 0 ? salesReport[0].totalOnline : 0,
+        totalOnline: salesReport.length > 0 ? salesReport[0].totalOnline + salesReport[0].totalOnlineCommission : 0,  
         totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
         expensesTotal: totalExpense || 0,
         cashCommission: salesReport.length > 0 ? salesReport[0].totalCashCommission : 0,

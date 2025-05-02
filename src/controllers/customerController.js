@@ -361,7 +361,7 @@ const getCentreSalesReport = async (req, res) => {
       const balance = centre.previousBalance + centre.balance;
 
       const grandTotal = payCriteria === 'plus'
-        ? report.totalCash + report.totalOnline - report.totalCommission
+        ? report.totalCash +  report.totalOnline
         : report.totalCash + report.totalOnline;
 
       const cashBalance = payCriteria === 'plus'
@@ -376,7 +376,7 @@ const getCentreSalesReport = async (req, res) => {
         payCriteria,
         balance,
         totalCash: report.totalCash,
-        totalOnline: report.totalOnline,
+        totalOnline: report.totalOnline + report.totalOnlineCommission,
         totalSales: grandTotal,
         totalOnlineCommission: report.totalOnlineCommission,
         totalCashCommission: report.totalCashCommission,
