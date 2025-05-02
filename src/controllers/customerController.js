@@ -376,7 +376,7 @@ const getCentreSalesReport = async (req, res) => {
         payCriteria,
         balance,
         totalCash: report.totalCash,
-        totalOnline: report.totalOnline + report.totalOnlineCommission,
+        totalOnline: report.totalOnline,
         totalSales: grandTotal,
         totalOnlineCommission: report.totalOnlineCommission,
         totalCashCommission: report.totalCashCommission,
@@ -1063,6 +1063,7 @@ const getCentreReportByDate = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
+        centreDetails: centre,
         centreName: centre.name,
         totalSales,
         totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
