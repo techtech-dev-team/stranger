@@ -376,17 +376,24 @@ exports.getCentreReport = async (req, res) => {
       return res.status(404).json({ success: false, message: "Center not found" });
     }
 
-    const matchCondition = { centreId: centerObjectId };
+    // Prepare date filter for cumulative calculations
+    let dateEnd;
     if (selectedDate) {
-      const dateStart = new Date(selectedDate);
-      dateStart.setHours(0, 0, 0, 0);
-      const dateEnd = new Date(selectedDate);
-      dateEnd.setHours(23, 59, 59, 999);
-      matchCondition.createdAt = { $gte: dateStart, $lte: dateEnd };
+      dateEnd = new Date(selectedDate);
+      dateEnd.setHours(23, 59, 59, 999); // Include the full selected day
+    } else {
+      dateEnd = new Date(); // Up to today
     }
 
+    // Build cumulative matchCondition
+    const cumulativeMatch = {
+      centreId: centerObjectId,
+      createdAt: { $lte: dateEnd }
+    };
+
+    // Fetch cumulative sales data up to selectedDate
     const salesReport = await Customer.aggregate([
-      { $match: matchCondition },
+      { $match: cumulativeMatch },
       {
         $group: {
           _id: null,
@@ -418,21 +425,21 @@ exports.getCentreReport = async (req, res) => {
       }
     ]);
 
-    const customers = await Customer.find(matchCondition)
+    const customers = await Customer.find({
+      ...cumulativeMatch,
+      createdAt: { $gte: new Date(selectedDate).setHours(0, 0, 0, 0), $lte: dateEnd }
+    })
       .populate("service", "name price")
       .populate("staffAttending", "name role")
       .lean();
 
-    const expenseMatchCondition = { centreIds: centerObjectId };
-    if (selectedDate) {
-      const dateStart = new Date(selectedDate);
-      dateStart.setHours(0, 0, 0, 0);
-      const dateEnd = new Date(selectedDate);
-      dateEnd.setHours(23, 59, 59, 999);
-      expenseMatchCondition.createdAt = { $gte: dateStart, $lte: dateEnd };
-    }
+    // Expense match for cumulative
+    const expenseMatch = {
+      centreIds: centerObjectId,
+      createdAt: { $lte: dateEnd }
+    };
 
-    const expenses = await Expense.find(expenseMatchCondition).lean();
+    const expenses = await Expense.find(expenseMatch).lean();
     const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
 
     const totalOnline = salesReport.length > 0 ? salesReport[0].totalOnline : 0;
@@ -447,13 +454,11 @@ exports.getCentreReport = async (req, res) => {
     if (center.payCriteria === "plus") {
       finalTotal = balance + cashCommission;
     } else {
-      finalTotal = center;
+      finalTotal = balance; // or however you define it for non-plus
     }
 
-    // Override center.balance ONLY for this response (don't update DB)
-    if (selectedDate) {
-      center.balance = balance + cashCommission; // historical as of selectedDate
-    }
+    // Override balance in center details ONLY in response
+    center.balance = finalTotal;
 
     res.status(200).json({
       success: true,
