@@ -976,46 +976,112 @@ const getFilteredCustomers = async (_, res) => {
   }
 };  
 
-const getRecentCustomersByCentreId = async (req, res) => {
+const getCentreReportByDate = async (req, res) => {
   try {
     const { centreId } = req.params;
+    const { date } = req.query; // Get the date from query parameters
 
     // Validate centreId
-    if (!mongoose.isValidObjectId(centreId)) {
-      return res.status(400).json({ message: 'Invalid Centre ID' });
+    if (!mongoose.Types.ObjectId.isValid(centreId)) {
+      return res.status(400).json({ success: false, message: "Invalid Centre ID" });
     }
 
-    // Calculate date from 2 days ago at 00:00:00 to today at 23:59:59
-    const today = new Date();
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - 2);
-    startDate.setHours(0, 0, 0, 0);
+    const centreObjectId = new mongoose.Types.ObjectId(centreId);
 
-    const endDate = new Date(today);
-    endDate.setHours(23, 59, 59, 999);
-
-    // Fetch customers created between startDate and endDate
-    const recentCustomers = await Customer.find({
-      centreId,
-      createdAt: { $gte: startDate, $lte: endDate }
-    })
-      .populate('service')
-      .populate('staffAttending')
-      .populate('branchId')
-      .populate('centreId')
-      .populate('regionId')
-      .exec();
-
-  
-
-    if (!recentCustomers.length) {
-      return res.status(404).json({ message: 'No recent customers found for this centre' });
+    // Fetch centre data
+    const centre = await Centre.findById(centreObjectId).lean();
+    if (!centre) {
+      return res.status(404).json({ success: false, message: "Centre not found" });
     }
 
-    res.status(200).json({ message: 'Recent customers retrieved successfully', recentCustomers });
+    // Validate and construct date filter
+    if (!date) {
+      return res.status(400).json({ success: false, message: "Date is required in YYYY-MM-DD format" });
+    }
+
+    const dateStart = new Date(date);
+    dateStart.setHours(0, 0, 0, 0);
+
+    const dateEnd = new Date(date);
+    dateEnd.setHours(23, 59, 59, 999);
+
+    const matchCondition = { centreId: centreObjectId, createdAt: { $gte: dateStart, $lte: dateEnd } };
+
+    // Get sales data for the centre using aggregation
+    const salesReport = await Customer.aggregate([
+      { $match: matchCondition },
+      {
+        $group: {
+          _id: null,
+          totalCustomers: { $sum: 1 },
+          totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+          totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+          totalCashCommission: { $sum: "$cashCommission" },
+          totalOnlineCommission: { $sum: "$onlineCommission" },
+          totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          totalCustomers: 1,
+          totalCash: 1,
+          totalOnline: 1,
+          totalCashCommission: 1,
+          totalOnlineCommission: 1,
+          totalCommission: 1,
+          grandTotal: {
+            $add: ["$totalCash", "$totalOnline"]
+          }
+        }
+      }
+    ]);
+
+    // Fetch customers for the given date and centre
+    const customers = await Customer.find(matchCondition)
+      .populate("service", "name price")
+      .populate("staffAttending", "name role")
+      .lean();
+
+    // Fetch expenses for the given date and centre
+    const expenseMatchCondition = { centreIds: centreObjectId, createdAt: { $gte: dateStart, $lte: dateEnd } };
+    const expenses = await Expense.find(expenseMatchCondition).lean();
+    const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
+
+    // Calculate balance and final total
+    const totalSales = salesReport.length > 0 ? salesReport[0].grandTotal : 0;
+    const totalOnline = salesReport.length > 0 ? salesReport[0].totalOnline : 0;
+    const cashCommission = salesReport.length > 0 ? salesReport[0].totalCashCommission : 0;
+    const balance = totalSales - totalExpense - totalOnline;
+
+    let finalTotal;
+    if (centre.payCriteria === "plus") {
+      finalTotal = balance + cashCommission;
+    } else {
+      finalTotal = balance - cashCommission;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        centreName: centre.name,
+        totalSales,
+        totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
+        totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
+        totalOnline: salesReport.length > 0 ? salesReport[0].totalOnline : 0,
+        totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
+        expensesTotal: totalExpense || 0,
+        cashCommission,
+        onlineCommission: salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0,
+        balance,
+        customers,
+        expenses,
+        finalTotal
+      }
+    });
   } catch (error) {
-    console.error('Error fetching recent customers by centre:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error(`Error fetching report for Centre ID ${req.params.centreId}:`, error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
@@ -1090,4 +1156,4 @@ const getMonthlyCollectionAndExpenses = async (req, res) => {
 
 
 
-module.exports = {getDashboardBlocks,getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate ,getRecentCustomersByCentreId ,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers,deleteCustomer};
+module.exports = {getDashboardBlocks,getCentreReportByDate,getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers,deleteCustomer};
