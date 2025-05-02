@@ -453,6 +453,7 @@ exports.getCentreReport = async (req, res) => {
     const expenses = await Expense.find(expenseMatchCondition).lean();
     const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
     const totalOnline = salesReport.length > 0 ? salesReport[0].totalOnline : 0;
+    const totalCash = salesReport.length > 0 ? salesReport[0].totalCash : 0;
 
     const totalSales = salesReport.length > 0 ? salesReport[0].grandTotal : 0;
     const onlineCommission = salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0;
@@ -464,7 +465,7 @@ exports.getCentreReport = async (req, res) => {
     if (center.payCriteria === "plus") {
       finalTotal = balance + cashCommission;
     } else {
-      finalTotal = balance - cashCommission;
+      finalTotal = center;
     }
     
 

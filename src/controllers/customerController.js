@@ -45,9 +45,9 @@ const addCustomer = async (req, res) => {
     let balanceUpdate = 0;
 
     if (centre.payCriteria === "plus") {
-      balanceUpdate = Number(paymentCash1 || 0) + Number(paymentOnline1 || 0);
+      balanceUpdate = Number(paymentCash1 || 0);
     } else if (centre.payCriteria === "minus") {
-      balanceUpdate = Number(paymentCash1 || 0) + Number(paymentOnline1 || 0);
+      balanceUpdate = Number(paymentCash1 || 0);
     }
 
     centre.balance += balanceUpdate;
@@ -716,10 +716,9 @@ const editCustomer = async (req, res) => {
     let balanceUpdate = 0;
 
     if (centre.payCriteria === "plus") {
-      balanceUpdate = Number(updates.paymentCash2 || 0) + Number(updates.paymentOnline2 || 0) -
-        Number(updates.cashCommission || 0) - Number(updates.onlineCommission || 0);
+      balanceUpdate = Number(updates.paymentCash2 || 0) + Number(updates.cashCommission || 0);
     } else if (centre.payCriteria === "minus") {
-      balanceUpdate = Number(updates.paymentOnline2 || 0) + Number(updates.paymentCash2 || 0)
+      balanceUpdate = Number(updates.paymentOnline2 || 0);
     }
 
     centre.balance += balanceUpdate;
