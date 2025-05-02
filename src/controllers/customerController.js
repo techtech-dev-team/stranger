@@ -718,7 +718,7 @@ const editCustomer = async (req, res) => {
     if (centre.payCriteria === "plus") {
       balanceUpdate = Number(updates.paymentCash2 || 0) + Number(updates.cashCommission || 0);
     } else if (centre.payCriteria === "minus") {
-      balanceUpdate = Number(updates.paymentOnline2 || 0);
+      balanceUpdate = Number(updates.paymentCash2 || 0);
     }
 
     centre.balance += balanceUpdate;
