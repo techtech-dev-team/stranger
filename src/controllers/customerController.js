@@ -6,6 +6,7 @@ const Centre = require('../models/Centre');
 const { login } = require('./userController');
 const clients = []; // Store SSE clients
 const moment = require('moment-timezone');
+const Expense = require('../models/Expense'); // Assuming the path to your Expense model
 const addCustomer = async (req, res) => {
   try {
     const {
@@ -386,7 +387,7 @@ const getCentreSalesReport = async (req, res) => {
     });
 
     const endTime = Date.now();
-    console.log(`🚀 Report built in ${endTime - startTime}ms`);
+    
 
     res.status(200).json({
       message: "Sales report retrieved successfully",
@@ -569,7 +570,7 @@ const getSalesGraphData = async (req, res) => {
 const getCentreSalesReportDaily = async (req, res) => {
   try {
     const { centreId, selectedDate } = req.query;
-    console.log(`Fetching sales report for date: ${selectedDate}`);
+    
 
     if (!selectedDate) {
       return res.status(400).json({ message: 'Please provide a valid date' });
@@ -691,7 +692,7 @@ const editCustomer = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    console.log(updates);
+    
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid customer ID" });
@@ -707,7 +708,7 @@ const editCustomer = async (req, res) => {
       return res.status(404).json({ message: "Centre not found" });
     }
 
-    console.log("Centre Pay Criteria:", centre.payCriteria);
+    
 
     const newPaymentCash2 = Number(updates.paymentCash2) || 0;
     const cashCommissionAmount = Number(updates.cashCommission) || 0;
@@ -736,7 +737,7 @@ const editCustomer = async (req, res) => {
 
     sendSSEEvent({ message: "Customer updated", customer: populatedCustomer });
   
-    res.status(200).json({ message: "Customer updated successfully", customer: updatedCustomer });
+     res.status(200).json({ message: "", customer: updatedCustomer });
   } catch (error) {
     console.error("Server Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -768,6 +769,47 @@ const getCustomersByCentre = async (req, res) => {
     res.status(200).json({ message: 'Customers retrieved successfully', customers });
   } catch (error) {
     console.error('Error fetching customers by centre:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+const getCustomersByCentreAndDate = async (req, res) => {
+  try {
+    const { centreId } = req.params;
+    const { selectedDate } = req.query;
+
+    // Validate centreId
+    if (!mongoose.isValidObjectId(centreId)) {
+      return res.status(400).json({ message: 'Invalid Centre ID' });
+    }
+
+    // Validate selectedDate
+    if (!selectedDate) {
+      return res.status(400).json({ message: 'Selected date is required in YYYY-MM-DD format' });
+    }
+
+    const startOfDay = new Date(selectedDate);
+    const endOfDay = new Date(selectedDate);
+    endOfDay.setHours(23, 59, 59, 999); // Include the entire day
+
+    // Find customers belonging to the given centre and created on the selected date
+    const customers = await Customer.find({
+      centreId,
+      createdAt: { $gte: startOfDay, $lte: endOfDay },
+    })
+      .populate('service')
+      .populate('staffAttending')
+      .populate('branchId')
+      .populate('centreId')
+      .populate('regionId')
+      .exec();
+
+    if (!customers.length) {
+      return res.status(404).json({ message: 'No customers found for this centre on the selected date' });
+    }
+
+    res.status(200).json({ message: 'Customers retrieved successfully', customers });
+  } catch (error) {
+    console.error('Error fetching customers by centre and date:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -812,7 +854,7 @@ const updateCustomer = async (req, res) => {
       return res.status(404).json({ message: "Centre not found" });
     }
 
-    console.log("Centre Pay Criteria:", centre.payCriteria);
+  
 
     let balanceUpdate = 0;
     if (centre.payCriteria === "plus") {
@@ -964,18 +1006,88 @@ const getRecentCustomersByCentreId = async (req, res) => {
       .populate('regionId')
       .exec();
 
+  
+
     if (!recentCustomers.length) {
       return res.status(404).json({ message: 'No recent customers found for this centre' });
     }
 
-    res.status(200).json({ message: 'Recent customers retrieved successfully'});
+    res.status(200).json({ message: 'Recent customers retrieved successfully', recentCustomers });
   } catch (error) {
     console.error('Error fetching recent customers by centre:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
+const getMonthlyCollectionAndExpenses = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    // Validate startDate and endDate
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Start date and end date are required in YYYY-MM-DD format' });
+    }
+
+    const startOfMonth = new Date(startDate);
+    const endOfMonth = new Date(endDate);
+    endOfMonth.setHours(23, 59, 59, 999); // Include the entire end date
+
+    // Fetch total cash collection, online collection
+    const customerData = await Customer.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalCashCollection: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+          totalOnlineCollection: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+        }
+      }
+    ]);
+
+     // Fetch total expenses from the Expense model
+     const expenseData = await Expense.aggregate([
+      {
+        $match: {
+          expenseDate: { $gte: startOfMonth, $lte: endOfMonth }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalExpenses: { $sum: "$amount" }
+        }
+      }
+    ]);
+
+    const customerResult = customerData[0] || {
+      totalCashCollection: 0,
+      totalOnlineCollection: 0,
+    };
+
+    const expenseResult = expenseData[0] || {
+      totalExpenses: 0
+    };
+
+    const data = {
+      totalCashCollection: customerResult.totalCashCollection,
+      totalOnlineCollection: customerResult.totalOnlineCollection,
+      totalExpenses: expenseResult.totalExpenses
+    };
+
+    res.status(200).json({
+      message: 'Monthly collection and expenses retrieved successfully',
+      data
+    });
+  } catch (error) {
+    console.error('Error fetching monthly collection and expenses:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
 
 
 
-module.exports = {getDashboardBlocks ,getRecentCustomersByCentreId ,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers,deleteCustomer};
+module.exports = {getDashboardBlocks,getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate ,getRecentCustomersByCentreId ,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers,deleteCustomer};

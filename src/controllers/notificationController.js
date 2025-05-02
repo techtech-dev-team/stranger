@@ -17,7 +17,6 @@ const clients = []; // Array to keep track of connected clients for SSE
 
 // Register new SSE client connections
 const registerSSEClient = (req, res) => {
-  console.log('New SSE client connection received');
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -30,7 +29,7 @@ const registerSSEClient = (req, res) => {
 
   // Handle client disconnection
   req.on("close", () => {
-    console.log('SSE client disconnected');
+    
     const index = clients.findIndex(client => client.req === req);
     if (index !== -1) {
       clients.splice(index, 1);

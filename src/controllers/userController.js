@@ -96,7 +96,7 @@ exports.registerUser = async (req, res) => {
 };
 
 
-exports.login = async (req, res) => {
+ exports.login = async (req, res) => {
   try {
     const { loginId, pin } = req.body;
 
@@ -132,6 +132,65 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+exports.loginArea = async (req, res) => {
+  try {
+    const { loginId, pin } = req.body;
+
+    const user = await User.findOne({ loginId }); // lean for performance
+
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    if (user.pin !== pin) {
+      return res.status(401).json({ message: "Invalid PIN" });
+    }
+
+    // ✅ Extract only the fields you need for JWT
+    const userPayload = {
+      _id: user._id, // <-- add this line
+      userId: user.userId,
+      loginId: user.loginId,
+      role: user.role,
+      name: user.name
+    };
+
+    // ✅ Generate token with minimal payload
+    const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict"
+    });
+
+    // ✅ Trim large `centres` if needed
+    const safeCentres = (user.centres || []).map(centre => ({
+      centreId: centre.centreId || centre._id,
+      name: centre.name || "Unnamed"
+      // Add more fields *only* if needed
+    }));
+
+    // ✅ Build safe response
+    const { pin: _pin, password, centres, ...safeUser } = user;
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        ...safeUser,
+        centres: safeCentres
+      },
+      role: user.role
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+
+
 
 exports.login2 = async (req, res) => {
   try {
@@ -191,6 +250,18 @@ exports.login2 = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find()
+      .populate("branchIds")
+      .populate("centreIds")
+      .populate("regionIds");
+
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Error retrieving users", error: error.message });
+  }
+};
+exports.getAllUsersExceptStaff = async (req, res) => {
+  try {
+    const users = await User.find({ role: { $ne: "ClubStaff" } })
       .populate("branchIds")
       .populate("centreIds")
       .populate("regionIds");

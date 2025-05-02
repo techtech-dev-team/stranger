@@ -4,7 +4,7 @@ const centreSchema = new mongoose.Schema({
   centreId: { type: String, required: true, unique: true },
   name: { type: String, required: true, unique: true },
   shortCode: { type: String, required: true, unique: true },
-  branchName: { type: String, required: true },
+  branchName: { type: String},
   payCriteria: {
     type: String,
     required: true,
