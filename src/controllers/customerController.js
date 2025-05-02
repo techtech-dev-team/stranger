@@ -215,189 +215,6 @@ const deleteCustomer = async (req, res) => {
   }
 };
 
-// const getCentreSalesReport = async (req, res) => {
-//   try {
-//     const { centreId } = req.query;
-
-//     let centresQuery = centreId && mongoose.Types.ObjectId.isValid(centreId) ? { _id: centreId } : {};
-
-//     // Fetch all centers or specific center
-//     const centres = await Centre.find(centresQuery);
-//     if (!centres.length) {
-//       return res.status(404).json({ message: 'No centers found' });
-//     }
-
-//     let responseData = [];
-
-//     for (const centre of centres) {
-//       const payCriteria = centre.payCriteria; // "plus" or "minus"
-
-//       const salesReport = await Customer.aggregate([
-//         { $match: { centreId: centre._id } },
-//         {
-//           $group: {
-//             _id: null,
-//             totalCustomers: { $sum: 1 }, // Count the number of customers
-//             totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
-//             totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
-//             totalCashCommission: { $sum: "$cashCommission" },
-//             totalOnlineCommission: { $sum: "$onlineCommission" },
-//             totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } }
-//           }
-//         },
-//         {
-//           $project: {
-//             _id: 0,
-//             totalCustomers: 1,
-//             totalCash: 1,
-//             totalOnline: 1,
-//             totalCashCommission: 1,
-//             totalOnlineCommission: 1,
-//             totalCommission: 1,
-//             grandTotal: {
-//               $cond: {
-//                 if: { $eq: [payCriteria, "plus"] },
-//                 then: {
-//                   $subtract: [
-//                     { $add: ["$totalCash", "$totalOnline"] },
-//                     "$totalCommission"
-//                   ]
-//                 },
-//                 else: { $add: ["$totalCash", "$totalOnline"] }
-//               }
-//             },
-//             balance: {
-//               $cond: {
-//                 if: { $eq: [payCriteria, "plus"] },
-//                 then: { $subtract: ["$totalCash", "$totalCashCommission"] },
-//                 else: "$totalCash"
-//               }
-//             }
-//           }
-//         }
-//       ]);
-
-//       // Calculate totals for the center
-//       let balance = centre.previousBalance + centre.balance;
-
-//       responseData.push({
-//         centreId: centre._id,
-//         centreName: centre.name,
-//         centreCode: centre.centreId,
-//         payCriteria,
-//         balance,
-//         totalCash: salesReport[0]?.totalCash || 0,
-//         totalOnline: salesReport[0]?.totalOnline || 0,
-//         totalSales: salesReport[0]?.grandTotal || 0,
-//         totalCustomers: salesReport[0]?.totalCustomers || 0, // Added customer count
-//         branchName: centre.branchName,
-//         salesReport
-//       });
-//     }
-
-//     res.status(200).json({
-//       message: 'Sales report retrieved successfully',
-//       data: responseData
-//     });
-
-//   } catch (error) {
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-// const getCentreSalesReport = async (req, res) => {
-//   const startTime = Date.now();
-//   try {
-//     const { centreId } = req.query;
-
-//     const centresQuery =
-//       centreId && mongoose.Types.ObjectId.isValid(centreId)
-//         ? { _id: centreId }
-//         : {};
-
-//     const centres = await Centre.find(centresQuery).lean();
-//     if (!centres.length) {
-//       return res.status(404).json({ message: 'No centres found' });
-//     }
-
-//     const centreMap = {};
-//     centres.forEach(c => centreMap[c._id.toString()] = c);
-
-//     const customerAgg = await Customer.aggregate([
-//       {
-//         $match: {
-//           centreId: { $in: centres.map(c => c._id) },
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: "$centreId",
-//           totalCustomers: { $sum: 1 },
-//           totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
-//           totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
-//           totalCashCommission: { $sum: "$cashCommission" },
-//           totalOnlineCommission: { $sum: "$onlineCommission" },
-//           totalCommission: {
-//             $sum: { $add: ["$cashCommission", "$onlineCommission"] }
-//           },
-//         },
-//       },
-//     ]);
-
-//     const salesMap = {};
-//     customerAgg.forEach(s => salesMap[s._id.toString()] = s);
-
-//     const responseData = centres.map(centre => {
-//       const centreIdStr = centre._id.toString();
-//       const report = salesMap[centreIdStr] || {
-//         totalCustomers: 0,
-//         totalCash: 0,
-//         totalOnline: 0,
-//         totalCashCommission: 0,
-//         totalOnlineCommission: 0,
-//         totalCommission: 0,
-//       };
-
-//       const payCriteria = centre.payCriteria;
-//       const balance = centre.previousBalance + centre.balance;
-
-//       const grandTotal = payCriteria === 'plus'
-//         ? report.totalCash +  report.totalOnline
-//         : report.totalCash + report.totalOnline;
-
-//       const cashBalance = payCriteria === 'plus'
-//         ? report.totalCash - report.totalCashCommission
-//         : report.totalCash;
-
-//       return {
-//         centreId: centre._id,
-//         centreName: centre.name,
-//         centreCode: centre.centreId,
-//         branchName: centre.branchName,
-//         payCriteria,
-//         balance,
-//         totalCash: report.totalCash,
-//         totalOnline: report.totalOnline,
-//         totalSales: grandTotal,
-//         totalOnlineCommission: report.totalOnlineCommission,
-//         totalCashCommission: report.totalCashCommission,
-//         totalCommission: report.totalCommission,  
-//         totalCustomers: report.totalCustomers,
-//         cashBalance,
-//       };
-//     });
-
-//     const endTime = Date.now();
-    
-
-//     res.status(200).json({
-//       message: "Sales report retrieved successfully",
-//       data: responseData,
-//     });
-//   } catch (error) {
-//     console.error("❌ getCentreSalesReport error:", error);
-//     res.status(500).json({ message: "Server error", error: error.message });
-//   }
-// };
 const getCentreSalesReport = async (req, res) => {
   const startTime = Date.now();
   try {
@@ -685,7 +502,6 @@ const getSalesGraphData = async (req, res) => {
 const getCentreSalesReportDaily = async (req, res) => {
   try {
     const { centreId, selectedDate } = req.query;
-    
 
     if (!selectedDate) {
       return res.status(400).json({ message: 'Please provide a valid date' });
@@ -737,6 +553,28 @@ const getCentreSalesReportDaily = async (req, res) => {
       salesMap[report._id.toString()] = report;
     });
 
+    // Get expenses for all centres in one go
+    const expenseReports = await Expense.aggregate([
+      {
+        $match: {
+          centreIds: { $in: centres.map((c) => c._id) },
+          createdAt: { $gte: startOfDay, $lte: endOfDay }
+        }
+      },
+      {
+        $group: {
+          _id: "$centreIds",
+          totalExpenses: { $sum: "$amount" }
+        }
+      }
+    ]);
+
+    // Map expenses data to each centre by centreId
+    const expenseMap = {};
+    expenseReports.forEach((expense) => {
+      expenseMap[expense._id.toString()] = expense.totalExpenses || 0;
+    });
+
     const responseData = centres.map((centre) => {
       const report = salesMap[centre._id.toString()] || {
         totalCustomers: 0,
@@ -746,6 +584,8 @@ const getCentreSalesReportDaily = async (req, res) => {
         totalOnlineCommission: 0,
         totalCommission: 0
       };
+
+      const totalExpenses = expenseMap[centre._id.toString()] || 0;
 
       const balance = centre.previousBalance + centre.balance;
 
@@ -763,6 +603,7 @@ const getCentreSalesReportDaily = async (req, res) => {
             ? report.totalCash + report.totalOnline - report.totalCommission
             : report.totalCash + report.totalOnline,
         totalCustomers: report.totalCustomers,
+        totalExpenses, // Include total expenses
         selectedDate
       };
     });
