@@ -553,12 +553,11 @@ const getCentreSalesReportDaily = async (req, res) => {
       salesMap[report._id.toString()] = report;
     });
 
-    // Get expenses for all centres in one go
+    // Get overall expenses for all centres (exclude date filter)
     const expenseReports = await Expense.aggregate([
       {
         $match: {
-          centreIds: { $in: centres.map((c) => c._id) },
-          createdAt: { $gte: startOfDay, $lte: endOfDay }
+          centreIds: { $in: centres.map((c) => c._id) }
         }
       },
       {
@@ -603,7 +602,7 @@ const getCentreSalesReportDaily = async (req, res) => {
             ? report.totalCash + report.totalOnline - report.totalCommission
             : report.totalCash + report.totalOnline,
         totalCustomers: report.totalCustomers,
-        totalExpenses, // Include total expenses
+        totalExpenses, // Include overall expenses (not filtered by date)
         selectedDate
       };
     });
