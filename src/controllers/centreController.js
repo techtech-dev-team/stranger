@@ -377,13 +377,11 @@ exports.getCentreReport = async (req, res) => {
     }
 
     const matchCondition = { centreId: centerObjectId };
-
-    let dateStart, dateEnd;
-
     if (selectedDate) {
-      const date = new Date(selectedDate);
-      dateStart = new Date(date.toISOString().split('T')[0] + 'T00:00:00.000Z');
-      dateEnd = new Date(date.toISOString().split('T')[0] + 'T23:59:59.999Z');
+      const dateStart = new Date(selectedDate);
+      dateStart.setHours(0, 0, 0, 0);
+      const dateEnd = new Date(selectedDate);
+      dateEnd.setHours(23, 59, 59, 999);
       matchCondition.createdAt = { $gte: dateStart, $lte: dateEnd };
     }
 
@@ -410,7 +408,11 @@ exports.getCentreReport = async (req, res) => {
           totalOnlineCommission: 1,
           totalCommission: 1,
           grandTotal: {
-            $add: ["$totalCash", "$totalOnline"]
+            $cond: {
+              if: { $eq: [center.payCriteria, "plus"] },
+              then: { $add: ["$totalCash", "$totalOnline"] },
+              else: { $add: ["$totalCash", "$totalOnline"] }
+            }
           }
         }
       }
@@ -422,53 +424,35 @@ exports.getCentreReport = async (req, res) => {
       .lean();
 
     const expenseMatchCondition = { centreIds: centerObjectId };
-
     if (selectedDate) {
+      const dateStart = new Date(selectedDate);
+      dateStart.setHours(0, 0, 0, 0);
+      const dateEnd = new Date(selectedDate);
+      dateEnd.setHours(23, 59, 59, 999);
       expenseMatchCondition.createdAt = { $gte: dateStart, $lte: dateEnd };
     }
 
     const expenses = await Expense.find(expenseMatchCondition).lean();
     const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
+
     const totalOnline = salesReport.length > 0 ? salesReport[0].totalOnline : 0;
     const totalCash = salesReport.length > 0 ? salesReport[0].totalCash : 0;
     const totalSales = salesReport.length > 0 ? salesReport[0].grandTotal : 0;
     const onlineCommission = salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0;
     const cashCommission = salesReport.length > 0 ? salesReport[0].totalCashCommission : 0;
+
     const balance = totalSales - totalExpense - totalOnline;
-
-    // 🔥 Back-calculate historical balance
-    let historicalBalance = center.balance;
-
-    if (selectedDate) {
-      const futureCustomers = await Customer.find({
-        centreId: centerObjectId,
-        createdAt: { $gt: dateEnd }
-      });
-
-      const futureExpenses = await Expense.find({
-        centreIds: centerObjectId,
-        createdAt: { $gt: dateEnd }
-      });
-
-      let futureCashInflow = 0;
-      let futureExpenseTotal = 0;
-
-      futureCustomers.forEach(c => {
-        futureCashInflow += (c.paymentCash1 || 0) + (c.paymentCash2 || 0);
-      });
-
-      futureExpenses.forEach(e => {
-        futureExpenseTotal += (e.amount || 0);
-      });
-
-      historicalBalance = center.balance - futureCashInflow + futureExpenseTotal;
-    }
 
     let finalTotal;
     if (center.payCriteria === "plus") {
       finalTotal = balance + cashCommission;
     } else {
-      finalTotal = historicalBalance;
+      finalTotal = center;
+    }
+
+    // Override center.balance ONLY for this response (don't update DB)
+    if (selectedDate) {
+      center.balance = balance + cashCommission; // historical as of selectedDate
     }
 
     res.status(200).json({
@@ -480,11 +464,10 @@ exports.getCentreReport = async (req, res) => {
         totalCash,
         totalOnline: totalOnline + onlineCommission,
         totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
-        expensesTotal: totalExpense,
+        expensesTotal: totalExpense || 0,
         cashCommission,
         onlineComm: onlineCommission,
         balance,
-        historicalBalance,
         centerDetails: center,
         customers,
         expenses,
