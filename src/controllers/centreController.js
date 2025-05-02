@@ -360,178 +360,40 @@ exports.addCentre = async (req, res) => {
   }
 };
 
-// exports.getCentreReport = async (req, res) => {
-//   try {
-//     const { centerId } = req.params;
-//     const { selectedDate } = req.query; // Get selected date
-
-//     // Check if centerId is a valid ObjectId
-//     if (!mongoose.Types.ObjectId.isValid(centerId)) {
-//       return res.status(400).json({ success: false, message: "Invalid center ID" });
-//     }
-
-//     const centerObjectId = new mongoose.Types.ObjectId(centerId);
-
-//     // Fetch center data and populate necessary fields
-//     const center = await Centre.findById(centerObjectId).lean();
-
-//     if (!center) {
-//       return res.status(404).json({ success: false, message: "Center not found" });
-//     }
-
-//     // Construct date filter
-//     const matchCondition = { centreId: centerObjectId };
-//     if (selectedDate) {
-//       const dateStart = new Date(selectedDate);
-//       dateStart.setHours(0, 0, 0, 0);
-
-//       const dateEnd = new Date(selectedDate);
-//       dateEnd.setHours(23, 59, 59, 999);
-
-//       matchCondition.createdAt = { $gte: dateStart, $lte: dateEnd };
-//     }
-
-//     // Get sales data for the center using aggregation
-//     const salesReport = await Customer.aggregate([
-//       { $match: matchCondition },
-//       {
-//         $group: {
-//           _id: null,
-//           totalCustomers: { $sum: 1 },
-//           totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
-//           totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
-//           totalCashCommission: { $sum: "$cashCommission" },
-//           totalOnlineCommission: { $sum: "$onlineCommission" },
-//           totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } }
-//         }
-//       },
-//       {
-//         $project: {
-//           _id: 0,
-//           totalCustomers: 1,
-//           totalCash: 1,
-//           totalOnline: 1,
-//           totalCashCommission: 1,
-//           totalOnlineCommission: 1,
-//           totalCommission: 1,
-//           grandTotal: {
-//             $cond: {
-//               if: { $eq: [center.payCriteria, "plus"] },
-//               then:
-//                 { $add: ["$totalCash", "$totalOnline"] }
-//               ,
-//               else: { $add: ["$totalCash", "$totalOnline"] }
-//             }
-//           },
-//           // balance: {
-//           //   $cond: {
-//           //     if: { $eq: [center.payCriteria, "plus"] },
-//           //     then: { $subtract: ["$totalCash", "$totalCashCommission"] },
-//           //     else: "$totalCash"
-//           //   }
-//           // }
-//         }
-//       }
-//     ]);
-
-//     const customers = await Customer.find(matchCondition)
-//       .populate("service", "name price")  // Populating service details
-//       .populate("staffAttending", "name role")  // Populating staff details
-//       .lean();
-
-//     const expenseMatchCondition = { centreIds: centerObjectId };
-//     if (selectedDate) {
-//       const dateStart = new Date(selectedDate);
-//       dateStart.setHours(0, 0, 0, 0);
-
-//       const dateEnd = new Date(selectedDate);
-//       dateEnd.setHours(23, 59, 59, 999);
-
-//       expenseMatchCondition.createdAt = { $gte: dateStart, $lte: dateEnd };
-//     }
-
-//     const expenses = await Expense.find(expenseMatchCondition).lean();
-//     const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
-//     const totalOnline = salesReport.length > 0 ? salesReport[0].totalOnline : 0;
-//     const totalCash = salesReport.length > 0 ? salesReport[0].totalCash : 0;
-
-//     const totalSales = salesReport.length > 0 ? salesReport[0].grandTotal : 0;
-//     const onlineCommission = salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0;
-//     const cashCommission = salesReport.length > 0 ? salesReport[0].totalCashCommission : 0; // <-- ADD THIS
-//     const balance = totalSales - totalExpense - totalOnline;
-
-   
-//     let finalTotal;
-//     if (center.payCriteria === "plus") {
-//       finalTotal = balance + cashCommission;
-//     } else {
-//       finalTotal = center;
-//     }
-    
-
-//     res.status(200).json({
-//       success: true,
-//       data: {
-//         centreName: center.name,
-//         totalSales: salesReport.length > 0 ? salesReport[0].grandTotal : 0,
-//         totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
-//         totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
-//         totalOnline: salesReport.length > 0 ? salesReport[0].totalOnline + salesReport[0].totalOnlineCommission : 0,  
-//         totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
-//         expensesTotal: totalExpense || 0,
-//         cashCommission: salesReport.length > 0 ? salesReport[0].totalCashCommission : 0,
-//         onlineComm: salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0,
-//         balance,
-//         centerDetails: center,
-//         customers,
-//         expenses,
-//         salesReport,
-//         finalTotal
-//       }
-//     });
-
-//   } catch (error) {
-//     console.error(`Error fetching report for Center ID ${req.params.centerId}:`, error);
-//     res.status(500).json({ success: false, message: "Server error" });
-//   }
-// };
 exports.getCentreReport = async (req, res) => {
   try {
     const { centerId } = req.params;
-    const { selectedDate } = req.query;
+    const { selectedDate } = req.query; // Get selected date
 
+    // Check if centerId is a valid ObjectId
     if (!mongoose.Types.ObjectId.isValid(centerId)) {
       return res.status(400).json({ success: false, message: "Invalid center ID" });
     }
 
     const centerObjectId = new mongoose.Types.ObjectId(centerId);
+
+    // Fetch center data and populate necessary fields
     const center = await Centre.findById(centerObjectId).lean();
 
     if (!center) {
       return res.status(404).json({ success: false, message: "Center not found" });
     }
 
-    const customers = await Customer.find({
-      centreId: centerObjectId,
-      createdAt: {
-        $gte: new Date(selectedDate).setHours(0, 0, 0, 0),
-        $lte: new Date(selectedDate).setHours(23, 59, 59, 999),
-      },
-    })
-      .populate("service", "name price")
-      .populate("staffAttending", "name role")
-      .lean();
+    // Construct date filter
+    const matchCondition = { centreId: centerObjectId };
+    if (selectedDate) {
+      const dateStart = new Date(selectedDate);
+      dateStart.setHours(0, 0, 0, 0);
 
+      const dateEnd = new Date(selectedDate);
+      dateEnd.setHours(23, 59, 59, 999);
+
+      matchCondition.createdAt = { $gte: dateStart, $lte: dateEnd };
+    }
+
+    // Get sales data for the center using aggregation
     const salesReport = await Customer.aggregate([
-      {
-        $match: {
-          centreId: centerObjectId,
-          createdAt: {
-            $gte: new Date(selectedDate).setHours(0, 0, 0, 0),
-            $lte: new Date(selectedDate).setHours(23, 59, 59, 999),
-          },
-        },
-      },
+      { $match: matchCondition },
       {
         $group: {
           _id: null,
@@ -540,10 +402,8 @@ exports.getCentreReport = async (req, res) => {
           totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
           totalCashCommission: { $sum: "$cashCommission" },
           totalOnlineCommission: { $sum: "$onlineCommission" },
-          totalCommission: {
-            $sum: { $add: ["$cashCommission", "$onlineCommission"] },
-          },
-        },
+          totalCommission: { $sum: { $add: ["$cashCommission", "$onlineCommission"] } }
+        }
       },
       {
         $project: {
@@ -555,31 +415,59 @@ exports.getCentreReport = async (req, res) => {
           totalOnlineCommission: 1,
           totalCommission: 1,
           grandTotal: {
-            $add: ["$totalCash", "$totalOnline"],
+            $cond: {
+              if: { $eq: [center.payCriteria, "plus"] },
+              then:
+                { $add: ["$totalCash", "$totalOnline"] }
+              ,
+              else: { $add: ["$totalCash", "$totalOnline"] }
+            }
           },
-        },
-      },
+          // balance: {
+          //   $cond: {
+          //     if: { $eq: [center.payCriteria, "plus"] },
+          //     then: { $subtract: ["$totalCash", "$totalCashCommission"] },
+          //     else: "$totalCash"
+          //   }
+          // }
+        }
+      }
     ]);
 
-    const expenses = await Expense.find({
-      centreIds: centerObjectId,
-      createdAt: {
-        $gte: new Date(selectedDate).setHours(0, 0, 0, 0),
-        $lte: new Date(selectedDate).setHours(23, 59, 59, 999),
-      },
-    }).lean();
+    const customers = await Customer.find(matchCondition)
+      .populate("service", "name price")  // Populating service details
+      .populate("staffAttending", "name role")  // Populating staff details
+      .lean();
 
+    const expenseMatchCondition = { centreIds: centerObjectId };
+    if (selectedDate) {
+      const dateStart = new Date(selectedDate);
+      dateStart.setHours(0, 0, 0, 0);
+
+      const dateEnd = new Date(selectedDate);
+      dateEnd.setHours(23, 59, 59, 999);
+
+      expenseMatchCondition.createdAt = { $gte: dateStart, $lte: dateEnd };
+    }
+
+    const expenses = await Expense.find(expenseMatchCondition).lean();
     const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
+    const totalOnline = salesReport.length > 0 ? salesReport[0].totalOnline : 0;
+    const totalCash = salesReport.length > 0 ? salesReport[0].totalCash : 0;
 
-    const finalTotal =
-      salesReport.length > 0
-        ? salesReport[0].grandTotal - totalExpense - salesReport[0].totalOnline
-        : 0;
+    const totalSales = salesReport.length > 0 ? salesReport[0].grandTotal : 0;
+    const onlineCommission = salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0;
+    const cashCommission = salesReport.length > 0 ? salesReport[0].totalCashCommission : 0; // <-- ADD THIS
+    const balance = totalSales - totalExpense - totalOnline;
 
-    // ✅ Include only balance updated before or on selected date
-    const selectedDateObj = new Date(selectedDate).setHours(23, 59, 59, 999);
-    const balance =
-      center.updatedAt <= selectedDateObj ? center.balance : 0;
+   
+    let finalTotal;
+    if (center.payCriteria === "plus") {
+      finalTotal = balance + cashCommission;
+    } else {
+      finalTotal = center;
+    }
+    
 
     res.status(200).json({
       success: true,
@@ -588,24 +476,22 @@ exports.getCentreReport = async (req, res) => {
         totalSales: salesReport.length > 0 ? salesReport[0].grandTotal : 0,
         totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
         totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
-        totalOnline:
-          salesReport.length > 0
-            ? salesReport[0].totalOnline + salesReport[0].totalOnlineCommission
-            : 0,
+        totalOnline: salesReport.length > 0 ? salesReport[0].totalOnline + salesReport[0].totalOnlineCommission : 0,  
         totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
         expensesTotal: totalExpense || 0,
         cashCommission: salesReport.length > 0 ? salesReport[0].totalCashCommission : 0,
         onlineComm: salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0,
-        balance, // ✅ this is only fetched if updated on/before selected date
+        balance,
         centerDetails: center,
         customers,
         expenses,
         salesReport,
-        finalTotal,
-      },
+        finalTotal
+      }
     });
+
   } catch (error) {
-    console.error("Error fetching center report:", error);
+    console.error(`Error fetching report for Center ID ${req.params.centerId}:`, error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
