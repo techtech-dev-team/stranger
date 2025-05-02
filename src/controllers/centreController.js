@@ -671,5 +671,79 @@ exports.getTodayZeroEntryCentresCount = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+exports.updateAllCentreBalances = async (req, res) => {
+  try {
+    const centres = await Centre.find({ status: 'active' });
 
+    for (const center of centres) {
+      const centerId = center._id;
+
+      // Get all customers of this center
+      const matchCondition = { centreId: centerId };
+
+      // Get sales data for the center using aggregation
+      const salesReport = await Customer.aggregate([
+        { $match: matchCondition },
+        {
+          $group: {
+            _id: null,
+            totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+            totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+            totalCashCommission: { $sum: "$cashCommission" },
+            totalOnlineCommission: { $sum: "$onlineCommission" },
+          }
+        },
+        {
+          $project: {
+            totalCash: 1,
+            totalOnline: 1,
+            totalCashCommission: 1,
+            totalOnlineCommission: 1,
+            grandTotal: {
+              $add: ["$totalCash", "$totalOnline"]
+            }
+          }
+        }
+      ]);
+
+      let totalCash = 0, totalOnline = 0, cashCommission = 0, grandTotal = 0;
+      if (salesReport.length > 0) {
+        totalCash = salesReport[0].totalCash;
+        totalOnline = salesReport[0].totalOnline;
+        cashCommission = salesReport[0].totalCashCommission;
+        grandTotal = salesReport[0].grandTotal;
+      }
+
+      // Calculate balance without subtracting expenses
+      const balance = grandTotal - totalOnline;
+
+      let finalTotal;
+      if (center.payCriteria === 'plus') {
+        finalTotal = balance + cashCommission;
+      } else {
+        finalTotal = balance; // or some other logic if "minus"
+      }
+
+      console.log("Updating center ID:", centerId, "with balance:", finalTotal);
+      try {
+        await Centre.findByIdAndUpdate(centerId, { balance: finalTotal });
+      } catch (err) {
+        console.error(`Failed to update Centre ID ${centerId}:`, err.message);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Balances updated successfully for all centers"
+    });
+
+  } catch (error) {
+    console.error("Error updating balances:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message
+    });
+  }
+};
 

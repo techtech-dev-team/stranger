@@ -16,7 +16,8 @@ const {
     sseCentreUpdates,
     updateCentre,
     deleteCentreById,
-    getTodayZeroEntryCentresCount
+    getTodayZeroEntryCentresCount,
+    updateAllCentreBalances
 } = require("../controllers/centreController");
 
 const router = express.Router();
@@ -27,6 +28,7 @@ router.get("/monthly-sales", getMonthlySalesByCentre);
 router.get("/combined-sales", getCombinedMonthlySalesByCentre);
 router.get("/monthly-clients", getMonthlyClientsByCentre);
 router.get("/combined-clients", getCombinedMonthlyClientsByCentre);
+router.put('/update-balances', updateAllCentreBalances);
 router.get("/", getAllCentres);
 router.post("/", addCentre);
 router.get("/inactive/list", getInactiveCentres);
