@@ -379,7 +379,7 @@ exports.getCentreReport = async (req, res) => {
       return res.status(404).json({ success: false, message: "Center not found" });
     }
 
-    // Construct date filter
+    // Construct date filter for sales data
     const matchCondition = { centreId: centerObjectId };
     if (selectedDate) {
       const dateStart = new Date(selectedDate);
@@ -422,24 +422,20 @@ exports.getCentreReport = async (req, res) => {
               ,
               else: { $add: ["$totalCash", "$totalOnline"] }
             }
-          },
-          // balance: {
-          //   $cond: {
-          //     if: { $eq: [center.payCriteria, "plus"] },
-          //     then: { $subtract: ["$totalCash", "$totalCashCommission"] },
-          //     else: "$totalCash"
-          //   }
-          // }
+          }
         }
       }
     ]);
 
+    // Get customers with populated services and staff details
     const customers = await Customer.find(matchCondition)
       .populate("service", "name price")  // Populating service details
       .populate("staffAttending", "name role")  // Populating staff details
       .lean();
 
+    // Expenses filtered by date (for the day's report)
     const expenseMatchCondition = { centreIds: centerObjectId };
+
     if (selectedDate) {
       const dateStart = new Date(selectedDate);
       dateStart.setHours(0, 0, 0, 0);
@@ -452,22 +448,26 @@ exports.getCentreReport = async (req, res) => {
 
     const expenses = await Expense.find(expenseMatchCondition).lean();
     const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
+
+    // 🔥 NEW: Overall expenses for this centre (without date filter)
+    const overallExpenses = await Expense.find({ centreIds: centerObjectId }).lean();
+    const overallTotalExpense = overallExpenses.reduce((total, expense) => total + (expense.amount || 0), 0);
+
     const totalOnline = salesReport.length > 0 ? salesReport[0].totalOnline : 0;
     const totalCash = salesReport.length > 0 ? salesReport[0].totalCash : 0;
 
     const totalSales = salesReport.length > 0 ? salesReport[0].grandTotal : 0;
     const onlineCommission = salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0;
-    const cashCommission = salesReport.length > 0 ? salesReport[0].totalCashCommission : 0; // <-- ADD THIS
+    const cashCommission = salesReport.length > 0 ? salesReport[0].totalCashCommission : 0;
+
     const balance = totalSales - totalExpense - totalOnline;
 
-   
     let finalTotal;
     if (center.payCriteria === "plus") {
       finalTotal = balance + cashCommission;
     } else {
-      finalTotal = center;
+      finalTotal = balance;
     }
-    
 
     res.status(200).json({
       success: true,
@@ -479,6 +479,7 @@ exports.getCentreReport = async (req, res) => {
         totalOnline: salesReport.length > 0 ? salesReport[0].totalOnline + salesReport[0].totalOnlineCommission : 0,  
         totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
         expensesTotal: totalExpense || 0,
+        overallExpenses: overallTotalExpense || 0,  // 💥 Added this line for overall expenses
         cashCommission: salesReport.length > 0 ? salesReport[0].totalCashCommission : 0,
         onlineComm: salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0,
         balance,
@@ -495,6 +496,7 @@ exports.getCentreReport = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 exports.getPreviousThreeDaysSales = async (req, res) => {
   try {
