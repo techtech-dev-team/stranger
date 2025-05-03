@@ -818,15 +818,15 @@ const updateCustomer = async (req, res) => {
       balanceUpdate -= Number(existingCustomer.paymentCash1 || 0) + Number(existingCustomer.paymentCash2 || 0)
         - Number(existingCustomer.cashCommission || 0) - Number(existingCustomer.onlineCommission || 0);
     } else if (centre.payCriteria === "minus") {
-      balanceUpdate -= Number(existingCustomer.paymentOnline1 || 0) + Number(existingCustomer.paymentOnline2 || 0) + Number(existingCustomer.paymentCash1 || 0) + Number(existingCustomer.paymentCash2 || 0);
+      balanceUpdate -= Number(existingCustomer.paymentCash1 || 0) + Number(existingCustomer.paymentCash2 || 0)
     }
 
     // Apply the updated customer's payment values to the centre balance
     if (centre.payCriteria === "plus") {
       balanceUpdate += Number(updates.paymentCash1 || 0) + Number(updates.paymentCash2 || 0)
-        - Number(updates.cashCommission || 0) - Number(updates.onlineCommission || 0);
+        + Number(updates.cashCommission || 0)
     } else if (centre.payCriteria === "minus") {
-      balanceUpdate += Number(updates.paymentOnline1 || 0) + Number(updates.paymentOnline2 || 0) + Number(updates.paymentCash1 || 0) + Number(updates.paymentCash2 || 0);
+      balanceUpdate += Number(updates.paymentCash1 || 0) + Number(updates.paymentCash2 || 0);
     }
 
     centre.balance += balanceUpdate;
