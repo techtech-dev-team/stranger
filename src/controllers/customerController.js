@@ -192,10 +192,13 @@ const deleteCustomer = async (req, res) => {
     if (centre) {
       let balanceUpdate = 0;
 
+      const paymentCash1 = Number(customer.paymentCash1 || 0);
+      const paymentOnline1 = Number(customer.paymentOnline1 || 0);
+
       if (centre.payCriteria === "plus") {
-        balanceUpdate = -(Number(customer.paymentCash1 || 0) + Number(customer.paymentOnline1 || 0));
+        balanceUpdate = -(paymentCash1 + paymentOnline1);
       } else if (centre.payCriteria === "minus") {
-        balanceUpdate = -(Number(customer.paymentCash1 || 0) + Number(customer.paymentOnline1 || 0));
+        balanceUpdate = -(paymentCash1 + paymentOnline1);
       }
 
       centre.balance += balanceUpdate;
