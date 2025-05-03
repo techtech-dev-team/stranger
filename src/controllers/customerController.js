@@ -15,7 +15,7 @@ const addCustomer = async (req, res) => {
       cashCommission, onlineCommission, outTime, branchId, centreId, regionId
     } = req.body;
 
-  
+
     // Ensure user is authenticated
     if (!req.user || !req.user._id) {
       return res.status(401).json({ message: 'Unauthorized' });
@@ -73,9 +73,9 @@ const addCustomer = async (req, res) => {
       centreId,
       regionId
     });
-    
+
     await newCustomer.save();
-    
+
     // Fetch the customer with populated references
     const populatedCustomer = await Customer.findById(newCustomer._id)
       .populate('service')
@@ -647,7 +647,7 @@ const editCustomer = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    
+
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid customer ID" });
@@ -663,7 +663,7 @@ const editCustomer = async (req, res) => {
       return res.status(404).json({ message: "Centre not found" });
     }
 
-    
+
 
     const newPaymentCash2 = Number(updates.paymentCash2) || 0;
     const cashCommissionAmount = Number(updates.cashCommission) || 0;
@@ -680,18 +680,18 @@ const editCustomer = async (req, res) => {
     await centre.save();
 
     const updatedCustomer = await Customer.findByIdAndUpdate(id, updates, { new: true });
-    
+
     const populatedCustomer = await Customer.findById(updatedCustomer._id)
-    .populate('service')
-    .populate('staffAttending')
-    .populate('branchId')
-    .populate('centreId')
-    .populate('regionId')
-    .exec();
+      .populate('service')
+      .populate('staffAttending')
+      .populate('branchId')
+      .populate('centreId')
+      .populate('regionId')
+      .exec();
 
     sendSSEEvent({ message: "Customer updated", customer: populatedCustomer });
-  
-     res.status(200).json({ message: "", customer: updatedCustomer });
+
+    res.status(200).json({ message: "", customer: updatedCustomer });
   } catch (error) {
     console.error("Server Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -787,7 +787,7 @@ const updateCustomer = async (req, res) => {
     const createdAt = new Date(existingCustomer.createdAt);
     const diff = now.getTime() - createdAt.getTime();
     const minutes = Math.floor(diff / 60000);
-    
+
 
     // 👉 Temporarily disabled this condition for flexibility
     // if (minutes < 5) {
@@ -808,7 +808,7 @@ const updateCustomer = async (req, res) => {
       return res.status(404).json({ message: "Centre not found" });
     }
 
-  
+
 
     let balanceUpdate = 0;
     if (centre.payCriteria === "plus") {
@@ -832,7 +832,7 @@ const updateCustomer = async (req, res) => {
       .exec();
 
     sendSSEEvent({ message: "Customer updated", customer: populatedCustomer });
-    
+
     res.status(200).json({ message: "Customer updated successfully" });
   } catch (error) {
     console.error("Server Error:", error);
@@ -911,7 +911,7 @@ const getDashboardBlocks = async (req, res) => {
 
 
 const getFilteredCustomers = async (_, res) => {
- 
+
   try {
     const customers = await Customer.find({
       status: { $nin: ["All ok", "null"] }
@@ -922,13 +922,13 @@ const getFilteredCustomers = async (_, res) => {
       .populate('centreId')
       .populate('regionId')
       .exec();
-  
+
     res.status(200).json(customers);
   } catch (error) {
     console.error(" Error during customer fetch:", error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
-};  
+};
 
 const getCentreReportByDate = async (req, res) => {
   try {
@@ -1002,6 +1002,22 @@ const getCentreReportByDate = async (req, res) => {
     const expenses = await Expense.find(expenseMatchCondition).lean();
     const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
 
+    // Fetch overall expenses for the centre (not filtered by date)
+    const overallExpenses = await Expense.aggregate([
+      {
+        $match: {
+          centreIds: centreObjectId
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalOverallExpense: { $sum: "$amount" }
+        }
+      }
+    ]);
+    const overallExpense = overallExpenses.length > 0 ? overallExpenses[0].totalOverallExpense : 0;
+
     // Calculate balance and final total
     const totalSales = salesReport.length > 0 ? salesReport[0].grandTotal : 0;
     const totalOnline = salesReport.length > 0 ? salesReport[0].totalOnline : 0;
@@ -1026,6 +1042,7 @@ const getCentreReportByDate = async (req, res) => {
         totalOnline: salesReport.length > 0 ? salesReport[0].totalOnline : 0,
         totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
         expensesTotal: totalExpense || 0,
+        overallExpense, // Include overall expenses
         cashCommission,
         onlineCommission: salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0,
         balance,
@@ -1069,8 +1086,8 @@ const getMonthlyCollectionAndExpenses = async (req, res) => {
       }
     ]);
 
-     // Fetch total expenses from the Expense model
-     const expenseData = await Expense.aggregate([
+    // Fetch total expenses from the Expense model
+    const expenseData = await Expense.aggregate([
       {
         $match: {
           expenseDate: { $gte: startOfMonth, $lte: endOfMonth }
@@ -1111,4 +1128,4 @@ const getMonthlyCollectionAndExpenses = async (req, res) => {
 
 
 
-module.exports = {getDashboardBlocks,getCentreReportByDate,getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate,addCustomer, getCustomersFast, updateCustomer,getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre,getFilteredCustomers,deleteCustomer};
+module.exports = { getDashboardBlocks, getCentreReportByDate, getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate, addCustomer, getCustomersFast, updateCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre, getFilteredCustomers, deleteCustomer };
