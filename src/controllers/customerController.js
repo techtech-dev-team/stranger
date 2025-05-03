@@ -192,10 +192,13 @@ const deleteCustomer = async (req, res) => {
     if (centre) {
       let balanceUpdate = 0;
 
+      const paymentCash1 = Number(customer.paymentCash1 || 0);
+      const paymentOnline1 = Number(customer.paymentOnline1 || 0);
+
       if (centre.payCriteria === "plus") {
-        balanceUpdate = -(Number(customer.paymentCash1 || 0) + Number(customer.paymentOnline1 || 0));
+        balanceUpdate = -(paymentCash1 + paymentOnline1);
       } else if (centre.payCriteria === "minus") {
-        balanceUpdate = -(Number(customer.paymentCash1 || 0) + Number(customer.paymentOnline1 || 0));
+        balanceUpdate = -(paymentCash1 + paymentOnline1);
       }
 
       centre.balance += balanceUpdate;
@@ -808,14 +811,22 @@ const updateCustomer = async (req, res) => {
       return res.status(404).json({ message: "Centre not found" });
     }
 
-
-
     let balanceUpdate = 0;
+
+    // Revert the existing customer's payment values from the centre balance
     if (centre.payCriteria === "plus") {
-      balanceUpdate = Number(updates.paymentCash2 || 0) + Number(updates.paymentOnline2 || 0)
-        - Number(updates.cashCommission || 0) - Number(updates.onlineCommission || 0);
+      balanceUpdate -= Number(existingCustomer.paymentCash1 || 0) + Number(existingCustomer.paymentCash2 || 0)
+        - Number(existingCustomer.cashCommission || 0) - Number(existingCustomer.onlineCommission || 0);
     } else if (centre.payCriteria === "minus") {
-      balanceUpdate = Number(updates.paymentOnline2 || 0) + Number(updates.paymentCash2 || 0);
+      balanceUpdate -= Number(existingCustomer.paymentCash1 || 0) + Number(existingCustomer.paymentCash2 || 0)
+    }
+
+    // Apply the updated customer's payment values to the centre balance
+    if (centre.payCriteria === "plus") {
+      balanceUpdate += Number(updates.paymentCash1 || 0) + Number(updates.paymentCash2 || 0)
+        + Number(updates.cashCommission || 0)
+    } else if (centre.payCriteria === "minus") {
+      balanceUpdate += Number(updates.paymentCash1 || 0) + Number(updates.paymentCash2 || 0);
     }
 
     centre.balance += balanceUpdate;
