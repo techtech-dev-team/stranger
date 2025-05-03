@@ -2,7 +2,7 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
-
+const Expense = require("../models/Expense");
 // Function to generate a random 4-digit number
 const generateRandom4Digit = () => Math.floor(1000 + Math.random() * 9000);
 
@@ -326,13 +326,34 @@ exports.getClubStaffUsers = async (req, res) => {
 exports.getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
-      .populate("branchIds")
-      .populate("centreIds")
-      .populate("regionIds");
+      .populate("branchIds") // Populate branch details
+      .populate("centreIds") // Populate centre details
+      .populate("regionIds"); // Populate region details
 
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(user);
+
+    // Calculate overall expenses for each centre
+    const centreDetailsWithExpenses = await Promise.all(
+      user.centreIds.map(async (centre) => {
+        const overallExpenses = await Expense.find({ centreIds: centre._id }).lean();
+        const totalExpenses = overallExpenses.reduce((total, expense) => total + (expense.amount || 0), 0);
+
+        return {
+          ...centre.toObject(),
+          totalExpenses, // Add total expenses to the centre details
+        };
+      })
+    );
+
+    // Replace `centreIds` with enriched details
+    const userWithExpenses = {
+      ...user.toObject(),
+      centreIds: centreDetailsWithExpenses,
+    };
+
+    res.json(userWithExpenses);
   } catch (error) {
+    console.error("Error retrieving user:", error);
     res.status(500).json({ message: "Error retrieving user", error: error.message });
   }
 };
