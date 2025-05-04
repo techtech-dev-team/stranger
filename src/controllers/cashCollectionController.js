@@ -30,7 +30,7 @@ exports.addCashCollection = async (req, res) => {
   try {
     const { centreId, regionId, branchId, amountReceived, fromDate, toDate, amountReceivingDate, remark } = req.body;
 
-    if (!centreId || !regionId || !branchId || !amountReceived || !fromDate || !toDate || !amountReceivingDate) {
+    if (!centreId || !regionId || !branchId || !amountReceived || !amountReceivingDate) {
       return res.status(400).json({ message: "All required fields must be provided." });
     }
 
