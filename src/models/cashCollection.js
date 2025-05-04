@@ -5,8 +5,8 @@ const cashCollectionSchema = new mongoose.Schema({
   regionId: { type: mongoose.Schema.Types.ObjectId, ref: "Region", required: true },
   branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", required: true },
   amountReceived: { type: Number, required: true },
-  fromDate: { type: Date, required: true },
-  toDate: { type: Date, required: true },
+  fromDate: { type: Date },
+  toDate: { type: Date},
   amountReceivingDate: { type: Date, required: true },
   remark: { type: String, default: "" },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },  // Added userId field
