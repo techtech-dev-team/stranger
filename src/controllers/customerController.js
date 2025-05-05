@@ -1045,21 +1045,21 @@ const getCentreReportByDate = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        centreDetails: centre,
-        centreName: centre.name,
-        totalSales,
-        totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
-        totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
-        totalOnline: salesReport.length > 0 ? salesReport[0].totalOnline : 0,
-        totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
-        expensesTotal: totalExpense || 0,
-        overallExpense, // Include overall expenses
-        cashCommission,
-        onlineCommission: salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0,
-        balance,
-        customers,
-        expenses,
-        finalTotal
+      centreDetails: centre,
+      centreName: centre.name,
+      totalSales,
+      totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
+      totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
+      totalOnline: centre.payCriteria === "plus" ? (salesReport.length > 0 ? salesReport[0].totalOnline + salesReport[0].totalOnlineCommission : 0) : (salesReport.length > 0 ? salesReport[0].totalOnline : 0),
+      totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
+      expensesTotal: totalExpense || 0,
+      overallExpense, // Include overall expenses
+      cashCommission,
+      onlineCommission: salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0,
+      balance,
+      customers,
+      expenses,
+      finalTotal
       }
     });
   } catch (error) {
