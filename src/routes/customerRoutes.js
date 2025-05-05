@@ -21,6 +21,7 @@ router.delete('/:id', deleteCustomer);
 router.get('/list', protect, getCustomers);
 
 router.get('/:centreId/recent-customers', getCentreReportByDate);
+
 router.get('/monthly-collection-expenses', getMonthlyCollectionAndExpenses);
 
 router.get('/filtered-customers', getFilteredCustomers);
