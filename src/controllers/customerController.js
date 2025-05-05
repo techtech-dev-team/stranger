@@ -681,6 +681,63 @@ const editCustomer = async (req, res) => {
 
     centre.balance += balanceUpdate;
     await centre.save();
+   
+ 
+    const updatedCustomer = await Customer.findByIdAndUpdate(id, updates, { new: true });
+
+    const populatedCustomer = await Customer.findById(updatedCustomer._id)
+      .populate('service')
+      .populate('staffAttending')
+      .populate('branchId')
+      .populate('centreId')
+      .populate('regionId')
+      .exec();
+
+    sendSSEEvent({ message: "Customer updated", customer: populatedCustomer });
+
+    res.status(200).json({ message: "", customer: updatedCustomer });
+  } catch (error) {
+    console.error("Server Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+const verifyEditCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid customer ID" });
+    }
+
+    const existingCustomer = await Customer.findById(id);
+    if (!existingCustomer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    const centre = await Centre.findById(existingCustomer.centreId);
+    if (!centre) {
+      return res.status(404).json({ message: "Centre not found" });
+    }
+
+    const newPaymentCash2 = Number(updates.paymentCash2) || 0;
+    const cashCommissionAmount = Number(updates.cashCommission) || 0;
+
+    let balanceUpdate = 0;
+    if (centre.payCriteria === "plus") {
+      balanceUpdate = newPaymentCash2 + cashCommissionAmount;
+    } else if (centre.payCriteria === "minus") {
+      balanceUpdate = newPaymentCash2;
+    }
+
+    centre.balance += balanceUpdate;
+    await centre.save();
+
+    // 🔐 Get user ID from req.user._id
+    if (typeof updates.verified === 'boolean') {
+      updates.verifiedBy = req.userId; // Store the ObjectId of the user who updated
+    }
 
     const updatedCustomer = await Customer.findByIdAndUpdate(id, updates, { new: true });
 
@@ -700,6 +757,7 @@ const editCustomer = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 const getCustomersByCentre = async (req, res) => {
   try {
@@ -1139,4 +1197,4 @@ const getMonthlyCollectionAndExpenses = async (req, res) => {
 
 
 
-module.exports = { getDashboardBlocks, getCentreReportByDate, getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate, addCustomer, getCustomersFast, updateCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre, getFilteredCustomers, deleteCustomer };
+module.exports = { getDashboardBlocks, getCentreReportByDate, getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate, addCustomer, getCustomersFast, updateCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre, getFilteredCustomers,verifyEditCustomer, deleteCustomer };

@@ -218,11 +218,12 @@ exports.login2 = async (req, res) => {
 
     // ✅ Final payload for token (only essentials)
     const userPayload = {
-      userId: user.userId,
+      _id: user._id, // ✅ This is what extractUserId expects
       loginId: user.loginId,
       role: user.role,
-      name: user.name, // Include user name
+      name: user.name
     };
+    
 
     const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 

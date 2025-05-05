@@ -22,6 +22,7 @@ const customerSchema = new mongoose.Schema({
   remark: { type: String },
   remark2: { type: String },
   verified: { type: Boolean, default: false },
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Customer', customerSchema);

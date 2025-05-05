@@ -58,6 +58,7 @@ exports.addExpense = async (req, res) => {
   }
 };
 
+
 exports.getExpenses = async (req, res) => {
   try {
     const expenses = await Expense.find()
