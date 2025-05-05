@@ -469,25 +469,30 @@ exports.getCentreReport = async (req, res) => {
       finalTotal = balance;
     }
 
+    let totalOnlineValue = salesReport.length > 0 ? salesReport[0].totalOnline : 0;
+    if (center.payCriteria === "plus") {
+      totalOnlineValue += (salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0);
+    }
+
     res.status(200).json({
       success: true,
       data: {
-        centreName: center.name,
-        totalSales: salesReport.length > 0 ? salesReport[0].grandTotal : 0,
-        totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
-        totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
-        totalOnline: salesReport.length > 0 ? salesReport[0].totalOnline + salesReport[0].totalOnlineCommission : 0,  
-        totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
-        expensesTotal: totalExpense || 0,
-        overallExpenses: overallTotalExpense || 0,  // 💥 Added this line for overall expenses
-        cashCommission: salesReport.length > 0 ? salesReport[0].totalCashCommission : 0,
-        onlineComm: salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0,
-        balance,
-        centerDetails: center,
-        customers,
-        expenses,
-        salesReport,
-        finalTotal
+      centreName: center.name,
+      totalSales: salesReport.length > 0 ? salesReport[0].grandTotal : 0,
+      totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
+      totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
+      totalOnline: totalOnlineValue,
+      totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
+      expensesTotal: totalExpense || 0,
+      overallExpenses: overallTotalExpense || 0,  // 💥 Added this line for overall expenses
+      cashCommission: salesReport.length > 0 ? salesReport[0].totalCashCommission : 0,
+      onlineComm: salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0,
+      balance,
+      centerDetails: center,
+      customers,
+      expenses,
+      salesReport,
+      finalTotal
       }
     });
 
@@ -673,6 +678,47 @@ exports.getTodayZeroEntryCentresCount = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+exports.getTodayZeroEntryCentresCount = async (req, res) => {
+  try {
+    const todayStart = moment().tz("Asia/Kolkata").startOf("day").toDate();
+    const todayEnd = moment().tz("Asia/Kolkata").endOf("day").toDate();
+
+
+    // Fetch all centres and populate the regionId
+    const centres = await Centre.find().populate('regionId', 'name');
+    if (!centres.length) {
+      return res.status(404).json({ message: "No centres found" });
+    }
+
+    const rawActiveCentreIds = await Customer.distinct("centreId", {
+      createdAt: { $gte: todayStart, $lt: todayEnd },
+    });
+    const activeCentreIds = rawActiveCentreIds.map(id => id.toString());
+
+
+    //  Split active and inactive centres
+    const activeCentres = centres.filter(centre =>
+      activeCentreIds.includes(centre._id.toString())
+    );
+
+    const inactiveCentres = centres.filter(centre =>
+      !activeCentreIds.includes(centre._id.toString())
+    );
+
+    res.status(200).json({
+      message: "Fetched today's centre activity successfully",
+      date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
+      activeCentreCount: activeCentres.length,
+      inactiveCentreCount: inactiveCentres.length,
+      activeCentres,
+      inactiveCentres
+    });
+
+  } catch (error) {
+    console.error(" Error in getTodayZeroEntryCentresCount:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 exports.updateAllCentreBalances = async (req, res) => {
   try {
     const centres = await Centre.find({ status: 'active' });
@@ -748,4 +794,3 @@ exports.updateAllCentreBalances = async (req, res) => {
     });
   }
 };
-
