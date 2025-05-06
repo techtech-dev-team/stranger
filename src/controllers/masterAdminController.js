@@ -92,66 +92,50 @@ exports.getVisionDailyUserReport = async (req, res) => {
 };
 exports.getIdReportUserWise = async (req, res) => {
   try {
-    const { date } = req.query;
-
-    // Date filter (optional)
-    let dateFilter = {};
-    if (date) {
-      const formattedDate = moment(date).startOf("day").toDate();
-      const nextDay = moment(date).add(1, "day").startOf("day").toDate();
-      dateFilter = { createdAt: { $gte: formattedDate, $lt: nextDay } };
-    }
-
-    // Get all customers where verifiedBy exists
     const customerEntries = await Customer.find({
-      ...dateFilter,
       verified: true,
-      verifiedBy: { $ne: null } // make sure verifiedBy is set
-    }).select("verifiedBy status");
+    }).select('verifiedBy');
 
-    // Aggregate user-wise counts
     const reportMap = {};
 
     customerEntries.forEach(entry => {
+      if (!entry.verifiedBy) {
+        return;
+      }
       const userId = entry.verifiedBy.toString();
 
       if (!reportMap[userId]) {
         reportMap[userId] = {
           userId,
-          entriesChecked: 0,
-          issuesRaised: 0,
+          count: 0,
         };
       }
 
-      reportMap[userId].entriesChecked += 1;
-      if (entry.status !== "All ok") {
-        reportMap[userId].issuesRaised += 1;
-      }
+      reportMap[userId].count += 1;
     });
 
-    // Fetch user names for the IDs found
     const userIds = Object.keys(reportMap);
-    const users = await User.find({ _id: { $in: userIds } }).select("_id name");
+    const users = await User.find({ _id: { $in: userIds } }).select('_id name');
 
     const userNameMap = users.reduce((acc, user) => {
       acc[user._id.toString()] = user.name;
       return acc;
     }, {});
 
-    // Format final report
-    const report = Object.values(reportMap).map(item => ({
-      userId: item.userId,
-      name: userNameMap[item.userId] || "Unknown",
-      entriesChecked: item.entriesChecked,
-      issuesRaised: item.issuesRaised,
-      verifiedEntriesCount: item.entriesChecked, // same
-    }));
+    const report = Object.values(reportMap).map(item => {
+      const name = userNameMap[item.userId] || 'Unknown';
+
+      return {
+        userId: item.userId,
+        name: name,
+        count: item.count,
+      };
+    });
 
     res.status(200).json({ success: true, data: report });
-
   } catch (error) {
-    console.error("Error fetching accurate report:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error('Error fetching accurate report:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
