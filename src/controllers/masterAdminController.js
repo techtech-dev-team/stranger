@@ -116,7 +116,7 @@ exports.getIdReportUserWise = async (req, res) => {
     const customerEntries = await Customer.find({
       ...dateFilter,
       status: { $ne: "null" }, // Exclude entries with status = "null"
-    }).select("centreId status");
+    }).select("centreId status verifiedBy");
 
     // Generate the report
     const report = users.map((user) => {
@@ -132,12 +132,18 @@ exports.getIdReportUserWise = async (req, res) => {
       const entriesChecked = userEntries.length;
       const issuesRaised = userEntries.filter((entry) => entry.status !== "All ok").length;
 
+      // Count verified entries directly from the Customer model
+      const verifiedEntriesCount = customerEntries.filter(
+        (entry) => entry.verifiedBy && entry.verifiedBy.toString() === user._id.toString()
+      ).length;
+
       return {
         userId: user._id,
         name: user.name,
         centreAccess,
         entriesChecked,
         issuesRaised,
+        verifiedEntriesCount,
       };
     });
 
