@@ -1097,7 +1097,7 @@ const getCentreReportByDate = async (req, res) => {
     if (centre.payCriteria === "plus") {
       finalTotal = balance + cashCommission;
     } else {
-      finalTotal = balance - cashCommission;
+      finalTotal = balance;
     }
 
     res.status(200).json({
