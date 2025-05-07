@@ -153,14 +153,15 @@ exports.getAllRegions = async (req, res) => {
 };
 // In regionController.js
 exports.addRegion = async (req, res) => {
-  const { name, shortCode } = req.body;
+  const { name, shortCode } = req.body; // shortCode from request body
   try {
-      const region = new Region({ name, shortCode });
-      await region.save();
-      res.status(201).json({ message: "Region added successfully", region });
+    // Map shortCode to short_code for the Region model
+    const region = new Region({ name, short_code: shortCode });
+    await region.save();
+    res.status(201).json({ message: "Region added successfully", region });
   } catch (error) {
-      console.error("Error adding region:", error);
-      res.status(500).json({ message: "Server error" });
+    console.error("Error adding region:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
