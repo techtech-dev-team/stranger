@@ -94,7 +94,7 @@ exports.getIdReportUserWise = async (req, res) => {
   try {
     const customerEntries = await Customer.find({
       verified: true,
-    }).select('verifiedBy');
+    }).select('verifiedBy createdAt');
 
     const reportMap = {};
 
@@ -103,15 +103,20 @@ exports.getIdReportUserWise = async (req, res) => {
         return;
       }
       const userId = entry.verifiedBy.toString();
+      const date = moment(entry.createdAt).format('YYYY-MM-DD');
 
       if (!reportMap[userId]) {
         reportMap[userId] = {
           userId,
-          count: 0,
+          dateWiseCounts: {},
         };
       }
 
-      reportMap[userId].count += 1;
+      if (!reportMap[userId].dateWiseCounts[date]) {
+        reportMap[userId].dateWiseCounts[date] = 0;
+      }
+
+      reportMap[userId].dateWiseCounts[date]++;
     });
 
     const userIds = Object.keys(reportMap);
@@ -124,11 +129,15 @@ exports.getIdReportUserWise = async (req, res) => {
 
     const report = Object.values(reportMap).map(item => {
       const name = userNameMap[item.userId] || 'Unknown';
+      const dateWiseEntries = Object.entries(item.dateWiseCounts).map(([date, count]) => ({
+        date,
+        count,
+      }));
 
       return {
         userId: item.userId,
         name: name,
-        count: item.count,
+        dateWiseEntries,
       };
     });
 
