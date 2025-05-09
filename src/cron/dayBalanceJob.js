@@ -1,18 +1,17 @@
 const cron = require('node-cron');
+const moment = require('moment-timezone'); // Install this package if not already installed
 const Centre = require('../models/Centre');
 const Customer = require('../models/Customer');
 const Expense = require('../models/Expense');
 const CentreBalance = require('../models/centreBalance');
 
-// Cron job to run every day at 7 AM
-cron.schedule('0 7 * * *', async () => {
+// Cron job to run every day at 7 AM IST
+cron.schedule('30 1 * * *', async () => { // 1:30 AM UTC is 7:00 AM IST
   try {
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
+    const today = moment().tz('Asia/Kolkata').startOf('day').toDate();
 
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1); // Go back 1 day
-    const dateStr = yesterday.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+    const yesterday = moment(today).subtract(1, 'day').toDate();
+    const dateStr = moment(yesterday).format('YYYY-MM-DD');
 
     const start = new Date(`${dateStr}T00:00:00.000Z`);
     const end = new Date(`${dateStr}T23:59:59.999Z`);
