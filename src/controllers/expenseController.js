@@ -94,11 +94,11 @@ exports.getExpenseById = async (req, res) => {
 exports.editExpense = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const updates = req.body;
     const updatedExpense = await Expense.findByIdAndUpdate(id, updates, { new: true });
     if (!updatedExpense) {
-      
+
       return res.status(404).json({ message: "Expense not found" });
     }
     res.status(200).json({ message: "Expense updated successfully", expense: updatedExpense });

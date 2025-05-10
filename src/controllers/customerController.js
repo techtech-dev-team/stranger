@@ -197,7 +197,7 @@ const deleteCustomer = async (req, res) => {
 
       if (centre.payCriteria === "plus") {
         balanceUpdate = -(paymentCash1 + (customer.paymentCash2 || 0) + (customer.cashCommission || 0));
-            } else if (centre.payCriteria === "minus") {
+      } else if (centre.payCriteria === "minus") {
         balanceUpdate = -(paymentCash1 + (customer.paymentCash2 || 0));
       }
 
@@ -681,8 +681,8 @@ const editCustomer = async (req, res) => {
 
     centre.balance += balanceUpdate;
     await centre.save();
-   
- 
+
+
     const updatedCustomer = await Customer.findByIdAndUpdate(id, updates, { new: true });
 
     const populatedCustomer = await Customer.findById(updatedCustomer._id)
@@ -1103,21 +1103,21 @@ const getCentreReportByDate = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-      centreDetails: centre,
-      centreName: centre.name,
-      totalSales,
-      totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
-      totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
-      totalOnline: centre.payCriteria === "plus" ? (salesReport.length > 0 ? salesReport[0].totalOnline + salesReport[0].totalOnlineCommission : 0) : (salesReport.length > 0 ? salesReport[0].totalOnline : 0),
-      totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
-      expensesTotal: totalExpense || 0,
-      overallExpense, // Include overall expenses
-      cashCommission,
-      onlineCommission: salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0,
-      balance,
-      customers,
-      expenses,
-      finalTotal
+        centreDetails: centre,
+        centreName: centre.name,
+        totalSales,
+        totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
+        totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
+        totalOnline: centre.payCriteria === "plus" ? (salesReport.length > 0 ? salesReport[0].totalOnline + salesReport[0].totalOnlineCommission : 0) : (salesReport.length > 0 ? salesReport[0].totalOnline : 0),
+        totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
+        expensesTotal: totalExpense || 0,
+        overallExpense, // Include overall expenses
+        cashCommission,
+        onlineCommission: salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0,
+        balance,
+        customers,
+        expenses,
+        finalTotal
       }
     });
   } catch (error) {
@@ -1197,4 +1197,4 @@ const getMonthlyCollectionAndExpenses = async (req, res) => {
 
 
 
-module.exports = { getDashboardBlocks, getCentreReportByDate, getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate, addCustomer, getCustomersFast, updateCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre, getFilteredCustomers,verifyEditCustomer, deleteCustomer };
+module.exports = { getDashboardBlocks, getCentreReportByDate, getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate, addCustomer, getCustomersFast, updateCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre, getFilteredCustomers, verifyEditCustomer, deleteCustomer };

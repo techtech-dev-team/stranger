@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const express = require('express'); 
+const express = require('express');
 dotenv = require('dotenv');
 const moment = require('moment');
 const Vision = require('../models/Vision');
@@ -7,38 +7,38 @@ const User = require('../models/User');
 const Centre = require('../models/Centre');
 const Customer = require('../models/Customer');
 exports.login = async (req, res) => {
-    try {
-      const { username, password } = req.body;
-  
-      // Validate credentials
-      if (
-        username === process.env.LOGIN_API_USERNAME &&
-        password === process.env.LOGIN_API_PASSWORD
-      ) {
-        // Generate a token (optional)
-        const token = jwt.sign({ username }, process.env.JWT_SECRET || 'default_secret', {
-          expiresIn: '1h',
-        });
-  
-        return res.status(200).json({
-          success: true,
-          message: 'Login successful',
-          token, // Return token if needed
-        });
-      }
-  
-      res.status(401).json({
-        success: false,
-        message: 'Invalid credentials',
+  try {
+    const { username, password } = req.body;
+
+    // Validate credentials
+    if (
+      username === process.env.LOGIN_API_USERNAME &&
+      password === process.env.LOGIN_API_PASSWORD
+    ) {
+      // Generate a token (optional)
+      const token = jwt.sign({ username }, process.env.JWT_SECRET || 'default_secret', {
+        expiresIn: '1h',
       });
-    } catch (error) {
-      console.error('Error during login:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Server error',
+
+      return res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        token, // Return token if needed
       });
     }
-  };
+
+    res.status(401).json({
+      success: false,
+      message: 'Invalid credentials',
+    });
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+    });
+  }
+};
 
 exports.getVisionDailyUserReport = async (req, res) => {
   try {
