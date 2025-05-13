@@ -979,7 +979,7 @@ const updateCustomer = async (req, res) => {
 //     res.status(500).json({ message: "Server Error" });
 //   }
 // };
-const getDashboardBlocks = async (req, res) => {
+const getDashboardBlocks = async (_, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1061,15 +1061,13 @@ const getDashboardBlocks = async (req, res) => {
     // Prepare dashboard blocks
     const blocksData = [
       { id: 1, title: "Today's Customers", value: todaysCustomers, section: "customers" },
-      { id: 2, title: "Today's Staff Present", value: presentStaffCount, section: "staff-attendance" },
       { id: 3, title: "Today's Online Collection", value: `${totalOnline} Rs`, section: "online-collection" },
       { id: 4, title: "Today's Cash Collection", value: `${totalCash} Rs`, section: "cash-collection" },
       { id: 5, title: "Today's Total Collection", value: `${totalCollection} Rs`, section: "total-collection" },
       { id: 6, title: "Today's Commission", value: `${totalCommission} Rs`, section: "commission" },
       { id: 7, title: "All Centers", value: activeCentersCount, section: "center-active" },
       { id: 8, title: "Inactive Centers", value: inactiveCentersCount, section: "center-inactive" },
-      { id: 9, title: "Historical Cash Collection", value: `${totalCashHistory} Rs`, section: "cash-history" },
-      { id: 10, title: "Total Cash Collection", value: `${totalCashCollectionAmount} Rs`, section: "cash-collection-total" }
+      { id: 9, title: "Historical Cash Collection", value: `${totalCashHistory} Rs`, section: "cash-history" }
     ];
 
     res.status(200).json(blocksData);
