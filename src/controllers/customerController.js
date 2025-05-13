@@ -1067,7 +1067,7 @@ const getDashboardBlocks = async (_, res) => {
       { id: 6, title: "Today's Commission", value: `${totalCommission} Rs`, section: "commission" },
       { id: 7, title: "All Centers", value: activeCentersCount, section: "center-active" },
       { id: 8, title: "Inactive Centers", value: inactiveCentersCount, section: "center-inactive" },
-      { id: 9, title: "Historical Cash Collection", value: `${totalCashHistory} Rs`, section: "cash-history" }
+      { id: 9, title: "Area Manager Collection", value: `${totalCashHistory} Rs`, section: "cash-history" }
     ];
 
     res.status(200).json(blocksData);
