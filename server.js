@@ -1,6 +1,5 @@
 require("dotenv").config(); // Load environment variables
 require('./src/cron/dayBalanceJob');
-const scheduleCustomerOutReset = require("./src/cron/resetCustomerOutEntry");
 const http = require("http");
 const app = require("./src/app"); // Import the app from src/app.js
 
