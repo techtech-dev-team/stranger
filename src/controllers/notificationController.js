@@ -29,7 +29,7 @@ const registerSSEClient = (req, res) => {
 
   // Handle client disconnection
   req.on("close", () => {
-    
+
     const index = clients.findIndex(client => client.req === req);
     if (index !== -1) {
       clients.splice(index, 1);

@@ -6,7 +6,9 @@ const Centre = require('../models/Centre');
 const { login } = require('./userController');
 const clients = []; // Store SSE clients
 const moment = require('moment-timezone');
-const Expense = require('../models/Expense'); // Assuming the path to your Expense model
+const Expense = require('../models/Expense');
+const CashCollection = require('../models/cashCollection');
+ // Assuming the path to your Expense model
 const addCustomer = async (req, res) => {
   try {
     const {
@@ -196,9 +198,9 @@ const deleteCustomer = async (req, res) => {
       const paymentOnline1 = Number(customer.paymentOnline1 || 0);
 
       if (centre.payCriteria === "plus") {
-        balanceUpdate = -(paymentCash1 + paymentOnline1);
+        balanceUpdate = -(paymentCash1 + (customer.paymentCash2 || 0) + (customer.cashCommission || 0));
       } else if (centre.payCriteria === "minus") {
-        balanceUpdate = -(paymentCash1 + paymentOnline1);
+        balanceUpdate = -(paymentCash1 + (customer.paymentCash2 || 0));
       }
 
       centre.balance += balanceUpdate;
@@ -682,6 +684,7 @@ const editCustomer = async (req, res) => {
     centre.balance += balanceUpdate;
     await centre.save();
 
+
     const updatedCustomer = await Customer.findByIdAndUpdate(id, updates, { new: true });
 
     const populatedCustomer = await Customer.findById(updatedCustomer._id)
@@ -700,6 +703,63 @@ const editCustomer = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+const verifyEditCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid customer ID" });
+    }
+
+    const existingCustomer = await Customer.findById(id);
+    if (!existingCustomer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    const centre = await Centre.findById(existingCustomer.centreId);
+    if (!centre) {
+      return res.status(404).json({ message: "Centre not found" });
+    }
+
+    const newPaymentCash2 = Number(updates.paymentCash2) || 0;
+    const cashCommissionAmount = Number(updates.cashCommission) || 0;
+
+    let balanceUpdate = 0;
+    if (centre.payCriteria === "plus") {
+      balanceUpdate = newPaymentCash2 + cashCommissionAmount;
+    } else if (centre.payCriteria === "minus") {
+      balanceUpdate = newPaymentCash2;
+    }
+
+    centre.balance += balanceUpdate;
+    await centre.save();
+
+    // 🔐 Get user ID from req.user._id
+    if (typeof updates.verified === 'boolean') {
+      updates.verifiedBy = req.userId; // Store the ObjectId of the user who updated
+    }
+
+    const updatedCustomer = await Customer.findByIdAndUpdate(id, updates, { new: true });
+
+    const populatedCustomer = await Customer.findById(updatedCustomer._id)
+      .populate('service')
+      .populate('staffAttending')
+      .populate('branchId')
+      .populate('centreId')
+      .populate('regionId')
+      .exec();
+
+    sendSSEEvent({ message: "Customer updated", customer: populatedCustomer });
+
+    res.status(200).json({ message: "", customer: updatedCustomer });
+  } catch (error) {
+    console.error("Server Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 
 const getCustomersByCentre = async (req, res) => {
   try {
@@ -851,7 +911,75 @@ const updateCustomer = async (req, res) => {
   }
 };
 
-const getDashboardBlocks = async (req, res) => {
+// const getDashboardBlocks = async (req, res) => {
+//   try {
+//     const today = new Date();
+//     today.setHours(0, 0, 0, 0);
+
+//     const tomorrow = new Date(today);
+//     tomorrow.setDate(today.getDate() + 1);
+
+//     const dateRangeQuery = { createdAt: { $gte: today, $lt: tomorrow } };
+
+//     // Run all DB calls in parallel
+//     const [
+//       todaysCustomers,
+//       allCustomers,
+//       staffList,
+//       activeCentersCount,
+//       inactiveCentersCount
+//     ] = await Promise.all([
+//       Customer.countDocuments(dateRangeQuery),
+//       Customer.find(dateRangeQuery).select(
+//         'paymentOnline1 paymentOnline2 paymentCash1 paymentCash2 cashCommission onlineCommission'
+//       ),
+//       User.find({ role: "ClubStaff" }).select('monthlyAttendance'),
+//       Centre.countDocuments({ status: "active" }),
+//       Centre.countDocuments({ status: "inactive" })
+//     ]);
+
+//     // Calculate totals
+//     let totalOnline = 0;
+//     let totalCash = 0;
+//     let totalCommission = 0;
+
+//     allCustomers.forEach(customer => {
+//       totalOnline += (customer.paymentOnline1 || 0) + (customer.paymentOnline2 || 0);
+//       totalCash += (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
+//       totalCommission += (customer.cashCommission || 0) + (customer.onlineCommission || 0);
+//     });
+
+//     const totalCollection = totalOnline + totalCash;
+
+//     // Format today's date as string
+//     const todayDateString = today.toISOString().split('T')[0];
+
+//     // Count staff present today
+//     const presentStaffCount = staffList.filter(staff => {
+//       const attendance = staff.monthlyAttendance || {};
+//       return attendance[todayDateString];
+//     }).length;
+
+//     // Prepare dashboard blocks
+//     const blocksData = [
+//       { id: 1, title: "Today's Customers", value: todaysCustomers, section: "customers" },
+//       { id: 2, title: "Staff Present Today", value: presentStaffCount, section: "staff-attendance" },
+//       { id: 3, title: "Online Collection", value: `${totalOnline} Rs`, section: "online-collection" },
+//       { id: 4, title: "Cash Collection", value: `${totalCash} Rs`, section: "cash-collection" },
+//       { id: 5, title: "Total Collection", value: `${totalCollection} Rs`, section: "total-collection" },
+//       { id: 6, title: "Commission", value: `${totalCommission} Rs`, section: "commission" },
+//       { id: 7, title: "All Centers", value: activeCentersCount, section: "center-active" },
+//       { id: 8, title: "Inactive Centers", value: inactiveCentersCount, section: "center-inactive" }
+//     ];
+
+//     res.status(200).json(blocksData);
+
+//   } catch (error) {
+//     console.error("Error in getDashboardBlocks:", error);
+//     res.status(500).json({ message: "Server Error" });
+//   }
+// };
+const getDashboardBlocks = async (_, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -867,7 +995,9 @@ const getDashboardBlocks = async (req, res) => {
       allCustomers,
       staffList,
       activeCentersCount,
-      inactiveCentersCount
+      inactiveCentersCount,
+      historicalCashCollection,
+      totalCashCollection
     ] = await Promise.all([
       Customer.countDocuments(dateRangeQuery),
       Customer.find(dateRangeQuery).select(
@@ -875,7 +1005,25 @@ const getDashboardBlocks = async (req, res) => {
       ),
       User.find({ role: "ClubStaff" }).select('monthlyAttendance'),
       Centre.countDocuments({ status: "active" }),
-      Centre.countDocuments({ status: "inactive" })
+      Centre.countDocuments({ status: "inactive" }),
+      Customer.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalCashHistory: {
+              $sum: { $add: ["$paymentCash1", "$paymentCash2"] }
+            }
+          }
+        }
+      ]),
+      CashCollection.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalAmountReceived: { $sum: "$amountReceived" }
+          }
+        }
+      ])
     ]);
 
     // Calculate totals
@@ -900,16 +1048,26 @@ const getDashboardBlocks = async (req, res) => {
       return attendance[todayDateString];
     }).length;
 
+    // Get historical cash collection total
+    const totalCashHistory = historicalCashCollection.length
+      ? historicalCashCollection[0].totalCashHistory
+      : 0;
+
+    // Get total cash collection from CashCollection
+    const totalCashCollectionAmount = totalCashCollection.length
+      ? totalCashCollection[0].totalAmountReceived
+      : 0;
+
     // Prepare dashboard blocks
     const blocksData = [
       { id: 1, title: "Today's Customers", value: todaysCustomers, section: "customers" },
-      { id: 2, title: "Staff Present Today", value: presentStaffCount, section: "staff-attendance" },
-      { id: 3, title: "Online Collection", value: `${totalOnline} Rs`, section: "online-collection" },
-      { id: 4, title: "Cash Collection", value: `${totalCash} Rs`, section: "cash-collection" },
-      { id: 5, title: "Total Collection", value: `${totalCollection} Rs`, section: "total-collection" },
-      { id: 6, title: "Commission", value: `${totalCommission} Rs`, section: "commission" },
+      { id: 3, title: "Today's Online Payments", value: `${totalOnline} Rs`, section: "online-collection" },
+      { id: 4, title: "Today's Cash Payments", value: `${totalCash} Rs`, section: "cash-collection" },
+      { id: 5, title: "Today's Total Payments", value: `${totalCollection} Rs`, section: "total-collection" },
+      { id: 6, title: "Today's Commission", value: `${totalCommission} Rs`, section: "commission" },
       { id: 7, title: "All Centers", value: activeCentersCount, section: "center-active" },
-      { id: 8, title: "Inactive Centers", value: inactiveCentersCount, section: "center-inactive" }
+      { id: 8, title: "Inactive Centers", value: inactiveCentersCount, section: "center-inactive" },
+      { id: 9, title: "Area Manager Collection", value: `${totalCashHistory} Rs`, section: "cash-history" }
     ];
 
     res.status(200).json(blocksData);
@@ -919,7 +1077,6 @@ const getDashboardBlocks = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
 
 const getFilteredCustomers = async (_, res) => {
 
@@ -1039,7 +1196,7 @@ const getCentreReportByDate = async (req, res) => {
     if (centre.payCriteria === "plus") {
       finalTotal = balance + cashCommission;
     } else {
-      finalTotal = balance - cashCommission;
+      finalTotal = balance;
     }
 
     res.status(200).json({
@@ -1050,7 +1207,7 @@ const getCentreReportByDate = async (req, res) => {
         totalSales,
         totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
         totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
-        totalOnline: salesReport.length > 0 ? salesReport[0].totalOnline : 0,
+        totalOnline: centre.payCriteria === "plus" ? (salesReport.length > 0 ? salesReport[0].totalOnline + salesReport[0].totalOnlineCommission : 0) : (salesReport.length > 0 ? salesReport[0].totalOnline : 0),
         totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
         expensesTotal: totalExpense || 0,
         overallExpense, // Include overall expenses
@@ -1139,4 +1296,4 @@ const getMonthlyCollectionAndExpenses = async (req, res) => {
 
 
 
-module.exports = { getDashboardBlocks, getCentreReportByDate, getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate, addCustomer, getCustomersFast, updateCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre, getFilteredCustomers, deleteCustomer };
+module.exports = { getDashboardBlocks, getCentreReportByDate, getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate, addCustomer, getCustomersFast, updateCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre, getFilteredCustomers, verifyEditCustomer, deleteCustomer };

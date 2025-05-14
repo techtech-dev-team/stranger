@@ -5,6 +5,6 @@ const masterAdminAuth = require('../middleware/adminAuth');
 
 router.post('/login', adminController.login);
 
-router.get('/vision-daily-report', masterAdminAuth, adminController.getVisionDailyUserReport);
-router.get('/id-report-user-wise', masterAdminAuth, adminController.getIdReportUserWise);
+router.get('/vision-daily-report', adminController.getVisionDailyUserReport);
+router.get('/id-report-user-wise', adminController.getIdReportUserWise);
 module.exports = router;

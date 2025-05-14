@@ -243,9 +243,11 @@ exports.createBranch = async (req, res) => {
     });
 
     await newBranch.save();
+    console.log("Branch saved successfully:", newBranch); // Log the saved branch
     res.status(201).json({ message: "Branch created successfully", newBranch });
   } catch (error) {
     console.error("Error creating branch:", error);
+    console.error("Error details:", error.message, error.stack); // Log more error details
     res.status(500).json({ message: "Server error" });
   }
 };

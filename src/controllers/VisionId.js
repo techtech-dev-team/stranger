@@ -110,10 +110,10 @@ exports.updateCustomerStatus = async (req, res) => {
             .exec();
 
         sendSSEEvent({ message: 'Customer status updated', populatedCustomer });
-        
+
 
         res.status(200).json({ message: '', populatedCustomer });
-    
+
     } catch (error) {
         console.error('Error updating customer:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });

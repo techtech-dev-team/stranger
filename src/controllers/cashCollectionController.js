@@ -30,7 +30,7 @@ exports.addCashCollection = async (req, res) => {
   try {
     const { centreId, regionId, branchId, amountReceived, fromDate, toDate, amountReceivingDate, remark } = req.body;
 
-    if (!centreId || !regionId || !branchId || !amountReceived || !fromDate || !toDate || !amountReceivingDate) {
+    if (!centreId || !regionId || !branchId || !amountReceived || !amountReceivingDate) {
       return res.status(400).json({ message: "All required fields must be provided." });
     }
 
@@ -113,7 +113,7 @@ exports.getCashCollectionHistory = async (req, res) => {
 
     // Fetch history with user populated
     const history = await CashCollection.find(filter)
-      .select("amountReceived fromDate toDate amountReceivingDate userId")
+      .select("amountReceived fromDate toDate amountReceivingDate userId remark")
       .populate("userId", "name"); // Populate user's name and loginId
 
     const formattedHistory = history.map((item) => ({
@@ -121,6 +121,7 @@ exports.getCashCollectionHistory = async (req, res) => {
       duration: `${new Date(item.fromDate).toLocaleDateString()} - ${new Date(item.toDate).toLocaleDateString()}`,
       collectionDate: new Date(item.amountReceivingDate).toLocaleDateString(),
       postedBy: item.userId ? `${item.userId.name}` : "Unknown", // Show user info
+      remark: item.remark,
     }));
 
     res.status(200).json({

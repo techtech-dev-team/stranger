@@ -26,7 +26,16 @@ const centreSchema = new mongoose.Schema({
     type: String,
     enum: ["active", "inactive"],
     default: "active"
+  },
+  qrCode: {
+    type: String,
+    default: null
+  },
+  isVisible: {
+    type: Boolean,
+    default: true
   }
 });
+
 
 module.exports = mongoose.model("Centre", centreSchema);

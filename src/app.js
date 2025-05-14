@@ -79,6 +79,7 @@ app.use(
       },
     })
   );
+  
 app.get('/notifications', registerSSEClient);
 app.use("/api/master", masterController); 
 app.use("/api/sse", sseRoutes);

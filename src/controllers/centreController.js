@@ -3,6 +3,7 @@ const Customer = require("../models/Customer");
 const mongoose = require("mongoose");
 const moment = require("moment");
 const Expense = require("../models/Expense");
+const uploadToS3 = require('../utils/uploadToS3');
 let sseClients = []; // Store SSE clients
 
 
@@ -469,6 +470,11 @@ exports.getCentreReport = async (req, res) => {
       finalTotal = balance;
     }
 
+    let totalOnlineValue = salesReport.length > 0 ? salesReport[0].totalOnline : 0;
+    if (center.payCriteria === "plus") {
+      totalOnlineValue += (salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0);
+    }
+
     res.status(200).json({
       success: true,
       data: {
@@ -476,7 +482,7 @@ exports.getCentreReport = async (req, res) => {
         totalSales: salesReport.length > 0 ? salesReport[0].grandTotal : 0,
         totalCustomers: salesReport.length > 0 ? salesReport[0].totalCustomers : 0,
         totalCash: salesReport.length > 0 ? salesReport[0].totalCash : 0,
-        totalOnline: salesReport.length > 0 ? salesReport[0].totalOnline + salesReport[0].totalOnlineCommission : 0,  
+        totalOnline: totalOnlineValue,
         totalCommission: salesReport.length > 0 ? salesReport[0].totalCommission : 0,
         expensesTotal: totalExpense || 0,
         overallExpenses: overallTotalExpense || 0,  // 💥 Added this line for overall expenses
@@ -673,70 +679,125 @@ exports.getTodayZeroEntryCentresCount = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-exports.updateAllCentreBalances = async (req, res) => {
+exports.getTodayZeroEntryCentresCount = async (req, res) => {
   try {
-    const centres = await Centre.find({ status: 'active' });
+    const todayStart = moment().tz("Asia/Kolkata").startOf("day").toDate();
+    const todayEnd = moment().tz("Asia/Kolkata").endOf("day").toDate();
 
-    for (const center of centres) {
-      const centerId = center._id;
 
-      // Get all customers of this center
-      const matchCondition = { centreId: centerId };
-
-      // Get sales data for the center using aggregation
-      const salesReport = await Customer.aggregate([
-        { $match: matchCondition },
-        {
-          $group: {
-            _id: null,
-            totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
-            totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
-            totalCashCommission: { $sum: "$cashCommission" },
-            totalOnlineCommission: { $sum: "$onlineCommission" },
-          }
-        },
-        {
-          $project: {
-            totalCash: 1,
-            totalOnline: 1,
-            totalCashCommission: 1,
-            totalOnlineCommission: 1,
-            grandTotal: {
-              $add: ["$totalCash", "$totalOnline"]
-            }
-          }
-        }
-      ]);
-
-      let totalCash = 0, totalOnline = 0, cashCommission = 0, grandTotal = 0;
-      if (salesReport.length > 0) {
-        totalCash = salesReport[0].totalCash;
-        totalOnline = salesReport[0].totalOnline;
-        cashCommission = salesReport[0].totalCashCommission;
-        grandTotal = salesReport[0].grandTotal;
-      }
-
-      // Calculate balance without subtracting expenses
-      const balance = grandTotal - totalOnline;
-
-      let finalTotal;
-      if (center.payCriteria === 'plus') {
-        finalTotal = balance + cashCommission;
-      } else {
-        finalTotal = balance; // or some other logic if "minus"
-      }
-
-      console.log("Updating center ID:", centerId, "with balance:", finalTotal);
-      try {
-        await Centre.findByIdAndUpdate(centerId, { balance: finalTotal });
-      } catch (err) {
-        console.error(`Failed to update Centre ID ${centerId}:`, err.message);
-      }
+    // Fetch all centres and populate the regionId
+    const centres = await Centre.find().populate('regionId', 'name');
+    if (!centres.length) {
+      return res.status(404).json({ message: "No centres found" });
     }
 
+    const rawActiveCentreIds = await Customer.distinct("centreId", {
+      createdAt: { $gte: todayStart, $lt: todayEnd },
+    });
+    const activeCentreIds = rawActiveCentreIds.map(id => id.toString());
+
+
+    //  Split active and inactive centres
+    const activeCentres = centres.filter(centre =>
+      activeCentreIds.includes(centre._id.toString())
+    );
+
+    const inactiveCentres = centres.filter(centre =>
+      !activeCentreIds.includes(centre._id.toString())
+    );
+
+    res.status(200).json({
+      message: "Fetched today's centre activity successfully",
+      date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
+      activeCentreCount: activeCentres.length,
+      inactiveCentreCount: inactiveCentres.length,
+      activeCentres,
+      inactiveCentres
+    });
+
+  } catch (error) {
+    console.error(" Error in getTodayZeroEntryCentresCount:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+exports.updateAllCentreBalances = async (req, res) => {
+  try {
+    const { centerId } = req.params;
+
+    // Validate centerId
+    if (!mongoose.Types.ObjectId.isValid(centerId)) {
+      return res.status(400).json({ success: false, message: "Invalid center ID" });
+    }
+
+    // Find the center
+    const center = await Centre.findById(centerId);
+    if (!center) {
+      return res.status(404).json({ success: false, message: "Centre not found" });
+    }
+
+    // Match condition with proper ObjectId instantiation
+    const matchCondition = { centreId: new mongoose.Types.ObjectId(centerId) };
+
+    // Aggregate sales data
+    const salesReport = await Customer.aggregate([
+      { $match: matchCondition },
+      {
+        $group: {
+          _id: null,
+          totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
+          totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
+          totalCashCommission: { $sum: "$cashCommission" },
+          totalOnlineCommission: { $sum: "$onlineCommission" },
+        }
+      },
+      {
+        $project: {
+          totalCash: 1,
+          totalOnline: 1,
+          totalCashCommission: 1,
+          totalOnlineCommission: 1,
+          grandTotal: { $add: ["$totalCash", "$totalOnline"] }
+        }
+      }
+    ]);
+
+    // Handle case where no sales data is found
+    if (salesReport.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No sales data found for the specified center"
+      });
+    }
+
+    // Extract data from the sales report
+    const { totalCash, totalOnline, totalCashCommission, grandTotal } = salesReport[0];
+    const balance = grandTotal - totalOnline;
+
+    // Calculate final balance based on payCriteria
+    let finalTotal;
+    if (center.payCriteria === 'plus') {
+      finalTotal = balance + totalCashCommission;
+    } else {
+      finalTotal = totalCash;
+    }
+
+    console.log("Updating center ID:", centerId, "with balance:", finalTotal);
+
+    // Update the center's balance
+    const updatedCenter = await Centre.findByIdAndUpdate(centerId, { balance: finalTotal }, { new: true });
+    if (!updatedCenter) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update centre balance"
+      });
+    }
+
+    // Respond with success
     return res.status(200).json({
       success: true,
-      message: "Balances updated successfully for all centers"
+      message: "Balance updated successfully for the center",
+      centerId: centerId,
+      newBalance: finalTotal
     });
 
   } catch (error) {
@@ -748,4 +809,65 @@ exports.updateAllCentreBalances = async (req, res) => {
     });
   }
 };
+exports.updateQRCode = async (req, res) => {
+  try {
+    const { isVisible } = req.body;
 
+    if (!req.file) {
+      return res.status(400).json({ message: 'QR code image is required' });
+    }
+    // Upload the file to S3 (using buffer)
+    const uploadData = await uploadToS3(req.file, 'qrcodes'); // optional folder
+    const qrCodeUrl = uploadData.Location;
+
+    if (!qrCodeUrl) {
+      throw new Error('File location not available');
+    }
+
+    const updatedCentre = await Centre.findByIdAndUpdate(
+      req.params.id,
+      {
+        qrCode: qrCodeUrl,
+        isVisible: isVisible === 'true' || isVisible === true,
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedCentre) {
+      return res.status(404).json({ message: 'Centre not found' });
+    }
+
+    res.json({ message: 'QR Code updated successfully', centre: updatedCentre });
+  } catch (err) {
+    console.error('Error updating QR Code:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+exports.getQRCode = async (req, res) => {
+  try {
+    const { id } = req.params; // Centre ID from the request parameters
+
+    // Validate if ID is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid Centre ID" });
+    }
+
+    // Fetch the centre by ID
+    const centre = await Centre.findById(id).select("qrCode isVisible");
+
+    if (!centre) {
+      return res.status(404).json({ message: "Centre not found" });
+    }
+
+    // Check if the QR code is visible
+    if (!centre.isVisible) {
+      return res.status(200).json({ message: "QR Code is disabled" });
+    }
+
+    // Return the QR code URL
+    res.status(200).json({ qrCode: centre.qrCode });
+  } catch (error) {
+    console.error("Error fetching QR Code:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};

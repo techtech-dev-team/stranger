@@ -10,24 +10,24 @@ const moment = require('moment-timezone'); // Install: npm install moment-timezo
 const sseClients = [];
 
 exports.sseHandler = (req, res) => {
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    
-    res.write(`data: ${JSON.stringify({ message: "Connected to SSE" })}\n\n`); // ✅ Proper JSON
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
 
-    sseClients.push(res);
+  res.write(`data: ${JSON.stringify({ message: "Connected to SSE" })}\n\n`); // ✅ Proper JSON
 
-    req.on("close", () => {
-        const index = sseClients.indexOf(res);
-        if (index !== -1) sseClients.splice(index, 1);
-    });
+  sseClients.push(res);
+
+  req.on("close", () => {
+    const index = sseClients.indexOf(res);
+    if (index !== -1) sseClients.splice(index, 1);
+  });
 };
 
 const sendSSEUpdate = (data) => {
-    sseClients.forEach(client => {
-        client.write(`data: ${JSON.stringify(data)}\n\n`);
-    });
+  sseClients.forEach(client => {
+    client.write(`data: ${JSON.stringify(data)}\n\n`);
+  });
 };
 
 exports.addEntry = async (req, res) => {

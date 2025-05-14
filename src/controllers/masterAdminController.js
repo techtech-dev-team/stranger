@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const express = require('express'); 
+const express = require('express');
 dotenv = require('dotenv');
 const moment = require('moment');
 const Vision = require('../models/Vision');
@@ -7,38 +7,38 @@ const User = require('../models/User');
 const Centre = require('../models/Centre');
 const Customer = require('../models/Customer');
 exports.login = async (req, res) => {
-    try {
-      const { username, password } = req.body;
-  
-      // Validate credentials
-      if (
-        username === process.env.LOGIN_API_USERNAME &&
-        password === process.env.LOGIN_API_PASSWORD
-      ) {
-        // Generate a token (optional)
-        const token = jwt.sign({ username }, process.env.JWT_SECRET || 'default_secret', {
-          expiresIn: '1h',
-        });
-  
-        return res.status(200).json({
-          success: true,
-          message: 'Login successful',
-          token, // Return token if needed
-        });
-      }
-  
-      res.status(401).json({
-        success: false,
-        message: 'Invalid credentials',
+  try {
+    const { username, password } = req.body;
+
+    // Validate credentials
+    if (
+      username === process.env.LOGIN_API_USERNAME &&
+      password === process.env.LOGIN_API_PASSWORD
+    ) {
+      // Generate a token (optional)
+      const token = jwt.sign({ username }, process.env.JWT_SECRET || 'default_secret', {
+        expiresIn: '1h',
       });
-    } catch (error) {
-      console.error('Error during login:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Server error',
+
+      return res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        token, // Return token if needed
       });
     }
-  };
+
+    res.status(401).json({
+      success: false,
+      message: 'Invalid credentials',
+    });
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+    });
+  }
+};
 
 exports.getVisionDailyUserReport = async (req, res) => {
   try {
@@ -92,58 +92,118 @@ exports.getVisionDailyUserReport = async (req, res) => {
 };
 exports.getIdReportUserWise = async (req, res) => {
   try {
-    const { date } = req.query;
+    const { selectedDate } = req.query;
 
-    // Date filter (optional)
-    let dateFilter = {};
-    if (date) {
-      const formattedDate = moment(date).startOf("day").toISOString();
-      const nextDay = moment(date).add(1, "day").startOf("day").toISOString();
-      dateFilter = { createdAt: { $gte: formattedDate, $lt: nextDay } };
+    if (!selectedDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid date to generate the report.',
+      });
     }
 
-    // Fetch all users with the "ID" role
-    const users = await User.find({ role: "ID" }).select("_id name centreIds");
+    const startOfDay = moment.utc(selectedDate).startOf('day').toDate();
+    const endOfDay = moment.utc(selectedDate).endOf('day').toDate();
 
-    // Fetch all centres to get their codes
-    const centres = await Centre.find().select("_id centreId");
-    const centreMap = centres.reduce((acc, centre) => {
-      acc[centre._id.toString()] = centre.centreId;
+    // Fetch ALL customers created on selected date (no verified filter)
+    const customerEntries = await Customer.find({
+      createdAt: {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      },
+    }).select('verifiedBy createdAt status');
+
+    const reportMap = {};
+    const totalCustomerCounts = {}; // Day-wise count
+
+    customerEntries.forEach(entry => {
+      const date = moment(entry.createdAt).format('YYYY-MM-DD');
+
+      // Count total customers per day
+      if (!totalCustomerCounts[date]) {
+        totalCustomerCounts[date] = 0;
+      }
+      totalCustomerCounts[date]++;
+
+      // Skip if no verifiedBy user
+      if (!entry.verifiedBy) return;
+
+      const userId = entry.verifiedBy.toString();
+
+      // Init user entry
+      if (!reportMap[userId]) {
+        reportMap[userId] = {
+          userId,
+          dateWiseCounts: {},
+          issueCounts: {},
+        };
+      }
+
+      // Count per user per day
+      if (!reportMap[userId].dateWiseCounts[date]) {
+        reportMap[userId].dateWiseCounts[date] = 0;
+      }
+      reportMap[userId].dateWiseCounts[date]++;
+
+      // Handle issues (status != "All ok" and not null)
+      const status = entry.status ? entry.status.trim().toLowerCase() : '';
+      if (status && status !== 'all ok') {
+        if (!reportMap[userId].issueCounts[date]) {
+          reportMap[userId].issueCounts[date] = 0;
+        }
+        reportMap[userId].issueCounts[date]++;
+      }
+    });
+
+    // Get user names
+    const userIds = Object.keys(reportMap);
+    const users = await User.find({ _id: { $in: userIds } }).select('_id name');
+    const userNameMap = users.reduce((acc, user) => {
+      acc[user._id.toString()] = user.name;
       return acc;
     }, {});
 
-    // Fetch all customer entries (filtered by date if provided)
-    const customerEntries = await Customer.find({
-      ...dateFilter,
-      status: { $ne: "null" }, // Exclude entries with status = "null"
-    }).select("centreId status");
+    // Prepare final report
+    const report = Object.values(reportMap).map(item => {
+      const name = userNameMap[item.userId] || 'Unknown';
 
-    // Generate the report
-    const report = users.map((user) => {
-      // Get the list of centre codes the user has access to
-      const centreAccess = (user.centreIds || []).map((id) => centreMap[id] || "N/A");
+      const dateWiseEntries = Object.entries(item.dateWiseCounts).map(([date, count]) => ({
+        date,
+        count,
+      }));
 
-      // Filter customer entries for the centres accessible by this user
-      const userEntries = customerEntries.filter((entry) =>
-        user.centreIds.some((centreId) => centreId.toString() === entry.centreId.toString())
-      );
-
-      // Calculate the number of entries checked and issues raised
-      const entriesChecked = userEntries.length;
-      const issuesRaised = userEntries.filter((entry) => entry.status !== "All ok").length;
+      const issueEntries = Object.entries(item.issueCounts).map(([date, count]) => ({
+        date,
+        count,
+      }));
 
       return {
-        userId: user._id,
-        name: user.name,
-        centreAccess,
-        entriesChecked,
-        issuesRaised,
+        userId: item.userId,
+        name,
+        dateWiseEntries,
+        issueEntries,
       };
     });
 
-    res.status(200).json({ success: true, data: report });
+    // Format total customers day-wise
+    const totalCustomers = Object.entries(totalCustomerCounts).map(([date, count]) => ({
+      date,
+      count,
+    }));
+
+    const overallTotalCustomers = totalCustomerCounts[moment(selectedDate).format('YYYY-MM-DD')] || 0;
+
+    res.status(200).json({
+      success: true,
+      data: report,
+      totalCustomers,
+      overallTotalCustomers,
+    });
+
   } catch (error) {
-    console.error("Error fetching ID report user-wise:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error('Error fetching accurate report:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+
+

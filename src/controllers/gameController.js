@@ -3,14 +3,14 @@ const Game = require("../models/Game");
 // Check if there's a winner based on dynamic board size
 const checkWinner = (board, player) => {
   const size = board.length;
-  
+
   // Check rows
   for (let i = 0; i < size; i++) {
     if (board[i].every(cell => cell === player)) {
       return true;
     }
   }
-  
+
   // Check columns
   for (let j = 0; j < size; j++) {
     let column = true;
@@ -22,7 +22,7 @@ const checkWinner = (board, player) => {
     }
     if (column) return true;
   }
-  
+
   // Check main diagonal
   let diagonal1 = true;
   for (let i = 0; i < size; i++) {
@@ -32,7 +32,7 @@ const checkWinner = (board, player) => {
     }
   }
   if (diagonal1) return true;
-  
+
   // Check other diagonal
   let diagonal2 = true;
   for (let i = 0; i < size; i++) {
@@ -42,7 +42,7 @@ const checkWinner = (board, player) => {
     }
   }
   if (diagonal2) return true;
-  
+
   return false;
 };
 
@@ -50,9 +50,9 @@ const checkWinner = (board, player) => {
 const checkPartialWinner = (board, player) => {
   const size = board.length;
   if (size <= 3) return false; // Only for 4×4 and 6×6
-  
+
   const requiredInLine = size === 4 ? 3 : 4; // 3 for 4×4, 4 for 6×6
-  
+
   // Check rows for partial wins
   for (let i = 0; i < size; i++) {
     for (let j = 0; j <= size - requiredInLine; j++) {
@@ -63,7 +63,7 @@ const checkPartialWinner = (board, player) => {
       if (count === requiredInLine) return true;
     }
   }
-  
+
   // Check columns for partial wins
   for (let j = 0; j < size; j++) {
     for (let i = 0; i <= size - requiredInLine; i++) {
@@ -74,7 +74,7 @@ const checkPartialWinner = (board, player) => {
       if (count === requiredInLine) return true;
     }
   }
-  
+
   // Check diagonals for partial wins
   for (let i = 0; i <= size - requiredInLine; i++) {
     for (let j = 0; j <= size - requiredInLine; j++) {
@@ -84,7 +84,7 @@ const checkPartialWinner = (board, player) => {
         if (board[i + k][j + k] === player) count1++;
       }
       if (count1 === requiredInLine) return true;
-      
+
       // Check diagonal from top-right to bottom-left
       let count2 = 0;
       for (let k = 0; k < requiredInLine; k++) {
@@ -93,7 +93,7 @@ const checkPartialWinner = (board, player) => {
       if (count2 === requiredInLine) return true;
     }
   }
-  
+
   return false;
 };
 
@@ -101,7 +101,7 @@ const checkPartialWinner = (board, player) => {
 const getEmptyPositions = (board) => {
   const size = board.length;
   const emptyPositions = [];
-  
+
   for (let i = 0; i < size; i++) {
     for (let j = 0; j < size; j++) {
       if (board[i][j] === " ") {
@@ -109,7 +109,7 @@ const getEmptyPositions = (board) => {
       }
     }
   }
-  
+
   return emptyPositions;
 };
 
@@ -122,56 +122,56 @@ const isBoardFull = (board) => {
 // For larger boards, limit the depth to avoid excessive computation
 const minimax = (board, depth, isMaximizing, alpha = -Infinity, beta = Infinity, maxDepth = 5) => {
   const size = board.length;
-  
+
   // Limit depth for larger boards
   if (size > 3 && depth >= maxDepth) {
     return { score: evaluateBoard(board) * (isMaximizing ? -1 : 1) };
   }
-  
+
   // Evaluate if there's a terminal state
   if (checkWinner(board, "O")) return { score: 10 - depth };
   if (checkWinner(board, "X")) return { score: depth - 10 };
   if (isBoardFull(board)) return { score: 0 };
-  
+
   const emptyPositions = getEmptyPositions(board);
-  
+
   if (isMaximizing) {
     let bestScore = -Infinity;
     let bestMove;
-    
+
     for (const [i, j] of emptyPositions) {
       board[i][j] = "O"; // Computer is O
       const result = minimax(board, depth + 1, false, alpha, beta, maxDepth);
       board[i][j] = " "; // Undo move
-      
+
       if (result.score > bestScore) {
         bestScore = result.score;
         bestMove = [i, j];
       }
-      
+
       alpha = Math.max(alpha, bestScore);
       if (beta <= alpha) break; // Alpha-beta pruning
     }
-    
+
     return { score: bestScore, move: bestMove };
   } else {
     let bestScore = Infinity;
     let bestMove;
-    
+
     for (const [i, j] of emptyPositions) {
       board[i][j] = "X"; // Player is X
       const result = minimax(board, depth + 1, true, alpha, beta, maxDepth);
       board[i][j] = " "; // Undo move
-      
+
       if (result.score < bestScore) {
         bestScore = result.score;
         bestMove = [i, j];
       }
-      
+
       beta = Math.min(beta, bestScore);
       if (beta <= alpha) break; // Alpha-beta pruning
     }
-    
+
     return { score: bestScore, move: bestMove };
   }
 };
@@ -180,12 +180,12 @@ const minimax = (board, depth, isMaximizing, alpha = -Infinity, beta = Infinity,
 const evaluateBoard = (board) => {
   const size = board.length;
   let score = 0;
-  
+
   // Check rows
   for (let i = 0; i < size; i++) {
     score += evaluateLine(board[i]);
   }
-  
+
   // Check columns
   for (let j = 0; j < size; j++) {
     const column = [];
@@ -194,21 +194,21 @@ const evaluateBoard = (board) => {
     }
     score += evaluateLine(column);
   }
-  
+
   // Check main diagonal
   const diagonal1 = [];
   for (let i = 0; i < size; i++) {
     diagonal1.push(board[i][i]);
   }
   score += evaluateLine(diagonal1);
-  
+
   // Check other diagonal
   const diagonal2 = [];
   for (let i = 0; i < size; i++) {
     diagonal2.push(board[i][size - 1 - i]);
   }
   score += evaluateLine(diagonal2);
-  
+
   return score;
 };
 
@@ -217,14 +217,14 @@ const evaluateLine = (line) => {
   const countX = line.filter(cell => cell === "X").length;
   const countO = line.filter(cell => cell === "O").length;
   const empty = line.filter(cell => cell === " ").length;
-  
+
   // If both X and O are in the line, it's not winnable
   if (countX > 0 && countO > 0) return 0;
-  
+
   // Score based on how many markers and empty spaces
   if (countO > 0) return countO * countO * (empty > 0 ? 1 : 10);
   if (countX > 0) return -countX * countX * (empty > 0 ? 1 : 10);
-  
+
   return 0;
 };
 
@@ -232,11 +232,11 @@ const evaluateLine = (line) => {
 const computerMove = (board, difficulty) => {
   const size = board.length;
   const emptyPositions = getEmptyPositions(board);
-  
+
   // Easy: Random move
   if (difficulty === "easy") {
     return emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
-  } 
+  }
   // Medium: Win if possible, block player from winning, otherwise random
   else if (difficulty === "medium") {
     // Check if computer can win
@@ -248,7 +248,7 @@ const computerMove = (board, difficulty) => {
       }
       board[i][j] = " ";
     }
-    
+
     // Block player from winning
     for (const [i, j] of emptyPositions) {
       board[i][j] = "X";
@@ -258,16 +258,16 @@ const computerMove = (board, difficulty) => {
       }
       board[i][j] = " ";
     }
-    
+
     // Prefer center if available
     const center = Math.floor(size / 2);
     if (board[center][center] === " ") {
       return [center, center];
     }
-    
+
     // Otherwise random move
     return emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
-  } 
+  }
   // Hard: Use minimax algorithm to find optimal move (with depth limit for larger boards)
   else if (difficulty === "hard") {
     // For 3×3, use full minimax
@@ -291,7 +291,7 @@ const computerMove = (board, difficulty) => {
         }
         board[i][j] = " ";
       }
-      
+
       // Block player
       for (const [i, j] of emptyPositions) {
         board[i][j] = "X";
@@ -301,7 +301,7 @@ const computerMove = (board, difficulty) => {
         }
         board[i][j] = " ";
       }
-      
+
       // Use a very limited minimax for 6×6
       const result = minimax(board, 0, true, -Infinity, Infinity, 2);
       return result.move;
@@ -320,15 +320,15 @@ const computerMove = (board, difficulty) => {
         }
         board[i][j] = " ";
       }
-      
+
       // If it's the first move, take the center or a corner
       const moveCount = size * size - emptyPositions.length;
-      
+
       if (moveCount === 0) {
         // First move, take center or corner
         return board[1][1] === " " ? [1, 1] : [0, 0];
       }
-      
+
       if (moveCount === 1) {
         // If player took center, take a corner
         if (board[1][1] === "X") {
@@ -339,7 +339,7 @@ const computerMove = (board, difficulty) => {
           return [1, 1];
         }
       }
-      
+
       // Otherwise use minimax for optimal play
       const result = minimax(board, 0, true);
       return result.move;
@@ -348,7 +348,7 @@ const computerMove = (board, difficulty) => {
       return computerMove(board, "hard");
     }
   }
-  
+
   // Default to medium if an invalid difficulty is provided
   return computerMove(board, "medium");
 };
@@ -367,17 +367,17 @@ const disappearMoves = async (game) => {
 
 exports.startGame = async (req, res) => {
   const { difficulty, boardSize } = req.body;
-  
+
   if (!difficulty) {
     return res.status(400).send("Difficulty level is required");
   }
-  
+
   // Validate difficulty level
   const validDifficulties = ["easy", "medium", "hard", "expert"];
   if (!validDifficulties.includes(difficulty)) {
     return res.status(400).send("Invalid difficulty level");
   }
-  
+
   // Validate and set board size (default to 3 if not specified)
   let size = 3;
   if (boardSize) {
@@ -387,7 +387,7 @@ exports.startGame = async (req, res) => {
       return res.status(400).send("Invalid board size. Choose 3, 4, or 6.");
     }
   }
-  
+
   const game = new Game({
     board: createEmptyBoard(size),
     currentPlayer: "X",
@@ -395,43 +395,43 @@ exports.startGame = async (req, res) => {
     boardSize: size,
     moveHistory: [],
   });
-  
+
   await game.save();
   res.send(game);
 };
 
 exports.makeMove = async (req, res) => {
   const { gameId, row, col } = req.body;
-  
+
   const game = await Game.findById(gameId);
   if (!game) {
     return res.status(404).send("Game not found");
   }
-  
+
   const size = game.board.length;
-  
+
   // Input validation
   if (row < 0 || row >= size || col < 0 || col >= size) {
     return res.status(400).send("Invalid position");
   }
-  
+
   if (game.winner) {
     return res.status(400).send("Game is already over");
   }
-  
+
   if (game.board[row][col] !== " ") {
     return res.status(400).send("Position already taken");
   }
-  
+
   // Player's move
   game.moveHistory.push({ player: game.currentPlayer, row, col });
   game.board[row][col] = game.currentPlayer;
-  
+
   // Check if player won
-  if (checkWinner(game.board, game.currentPlayer) || 
-      (size > 3 && checkPartialWinner(game.board, game.currentPlayer))) {
+  if (checkWinner(game.board, game.currentPlayer) ||
+    (size > 3 && checkPartialWinner(game.board, game.currentPlayer))) {
     game.winner = game.currentPlayer;
-  } 
+  }
   // Check for tie
   else if (getEmptyPositions(game.board).length === 0) {
     if (game.difficulty === "hard" || game.difficulty === "expert") {
@@ -439,21 +439,21 @@ exports.makeMove = async (req, res) => {
     } else {
       game.winner = "Tie";
     }
-  } 
+  }
   // Computer's turn
   else {
     game.currentPlayer = "O"; // Switch to computer
-    
+
     // Make computer's move
     const [i, j] = computerMove(game.board, game.difficulty);
     game.board[i][j] = "O";
     game.moveHistory.push({ player: "O", row: i, col: j });
-    
+
     // Check if computer won
-    if (checkWinner(game.board, "O") || 
-        (size > 3 && checkPartialWinner(game.board, "O"))) {
+    if (checkWinner(game.board, "O") ||
+      (size > 3 && checkPartialWinner(game.board, "O"))) {
       game.winner = "O";
-    } 
+    }
     // Check for tie
     else if (getEmptyPositions(game.board).length === 0) {
       if (game.difficulty === "hard" || game.difficulty === "expert") {
@@ -461,13 +461,13 @@ exports.makeMove = async (req, res) => {
       } else {
         game.winner = "Tie";
       }
-    } 
+    }
     // Continue game
     else {
       game.currentPlayer = "X"; // Switch back to player
     }
   }
-  
+
   await game.save();
   res.send(game);
 };
@@ -475,12 +475,12 @@ exports.makeMove = async (req, res) => {
 // Add a new endpoint to get game stats
 exports.getGameStats = async (req, res) => {
   const { gameId } = req.params;
-  
+
   const game = await Game.findById(gameId);
   if (!game) {
     return res.status(404).send("Game not found");
   }
-  
+
   // Calculate stats
   const stats = {
     boardSize: game.boardSize || game.board.length,
@@ -490,6 +490,6 @@ exports.getGameStats = async (req, res) => {
     winner: game.winner || "In progress",
     difficulty: game.difficulty,
   };
-  
+
   res.send(stats);
 };

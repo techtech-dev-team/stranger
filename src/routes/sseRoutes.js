@@ -28,7 +28,7 @@ router.get("/events", (req, res) => {
     // Your actual event pushing
     const dataPush = setInterval(() => {
         sendEvent({ timestamp: new Date().toISOString(), message: "Live update!" });
-    }, 5000);
+    }, 180000);
 
     req.on("close", () => {
         clearInterval(dataPush);

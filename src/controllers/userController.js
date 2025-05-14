@@ -96,7 +96,7 @@ exports.registerUser = async (req, res) => {
 };
 
 
- exports.login = async (req, res) => {
+exports.login = async (req, res) => {
   try {
     const { loginId, pin } = req.body;
 
@@ -218,11 +218,12 @@ exports.login2 = async (req, res) => {
 
     // ✅ Final payload for token (only essentials)
     const userPayload = {
-      userId: user.userId,
+      _id: user._id, // ✅ This is what extractUserId expects
       loginId: user.loginId,
       role: user.role,
-      name: user.name, // Include user name
+      name: user.name
     };
+
 
     const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
@@ -646,7 +647,7 @@ exports.getPresentStaffToday = async (req, res) => {
     const allStaff = await User.find(query)
       .select("name role mobileNumber monthlyAttendance centreIds")
       .populate("centreIds", "centreId"); // Only fetch `centreId` from the `Centre` model
-      
+
     const [year, month] = date.split("-");
     const monthKey = `${year}-${month.padStart(2, "0")}`;
 

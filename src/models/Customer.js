@@ -20,7 +20,9 @@ const customerSchema = new mongoose.Schema({
   regionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Region', required: true },
   status: { type: String, default: "null" },
   remark: { type: String },
+  remark2: { type: String },
   verified: { type: Boolean, default: false },
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Customer', customerSchema);

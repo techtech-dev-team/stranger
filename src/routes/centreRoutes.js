@@ -17,8 +17,11 @@ const {
     updateCentre,
     deleteCentreById,
     getTodayZeroEntryCentresCount,
-    updateAllCentreBalances
+    updateAllCentreBalances,
+    updateQRCode,getQRCode
 } = require("../controllers/centreController");
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 router.get("/full", getCentresWithDetails);
@@ -28,7 +31,9 @@ router.get("/monthly-sales", getMonthlySalesByCentre);
 router.get("/combined-sales", getCombinedMonthlySalesByCentre);
 router.get("/monthly-clients", getMonthlyClientsByCentre);
 router.get("/combined-clients", getCombinedMonthlyClientsByCentre);
-router.put('/update-balances', updateAllCentreBalances);
+router.put('/update-balances/:centerId', updateAllCentreBalances);
+router.put('/:id/qr', upload.single('qrCodeImage'),updateQRCode);
+router.get("/:id/qrcode", getQRCode);
 router.get("/", getAllCentres);
 router.post("/", addCentre);
 router.get("/inactive/list", getInactiveCentres);

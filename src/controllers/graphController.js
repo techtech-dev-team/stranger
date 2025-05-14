@@ -26,7 +26,7 @@ const calculateSales = async (centreId, startDate, endDate) => {
         totalCommission: 0, // ✅ Add this
       };
     }
-    
+
 
     const cash1 = cust.paymentCash1 || 0;
     const cash2 = cust.paymentCash2 || 0;
@@ -51,8 +51,8 @@ const calculateSales = async (centreId, startDate, endDate) => {
     _id: date,
     ...salesByDate[date]
   }));
-  
-  
+
+
   return salesData;
 };
 
