@@ -1,5 +1,6 @@
 require("dotenv").config(); // Load environment variables
 require('./src/cron/dayBalanceJob');
+require('./src/cron/dailySummaryCron');
 const http = require("http");
 const app = require("./src/app"); // Import the app from src/app.js
 
