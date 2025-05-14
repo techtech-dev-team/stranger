@@ -15,11 +15,18 @@ const tidSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    tidNumbers: {
-      type: [String], // Array of TID numbers
-      required: true,
-      validate: [arr => arr.length > 0, "At least one TID number is required"],
-    },
+    tidNumbers: [
+      {
+        tid: {
+          type: String,
+          required: true,
+        },
+        accountName: {
+          type: String,
+          required: true,
+        },
+      }
+    ],
   },
   { timestamps: true }
 );

@@ -6,13 +6,20 @@ exports.addTIDEntry = async (req, res) => {
   try {
     const { centreId, centreName, bankName, tidNumbers } = req.body;
 
-    if (!centreId || !centreName || !bankName || !tidNumbers?.length) {
-      return res.status(400).json({ message: "All fields are required" });
+    // Validate required fields
+    if (!centreId || !centreName || !bankName || !Array.isArray(tidNumbers) || tidNumbers.length === 0) {
+      return res.status(400).json({ message: "All fields are required, including at least one TID number with account name" });
     }
 
-    // Check if the centreId already exists in the TID collection
-    const existingTID = await TID.findOne({ centreId });
+    // Validate each tidNumber object
+    for (const item of tidNumbers) {
+      if (!item.tid || !item.accountName) {
+        return res.status(400).json({ message: "Each TID must have both 'tid' and 'accountName'" });
+      }
+    }
 
+    // Check for duplicate centreId
+    const existingTID = await TID.findOne({ centreId });
     if (existingTID) {
       return res.status(400).json({ message: "This centre is already listed with TID numbers" });
     }
@@ -20,7 +27,6 @@ exports.addTIDEntry = async (req, res) => {
     const newTID = new TID({ centreId, centreName, bankName, tidNumbers });
     await newTID.save();
 
-    // Populate the centreId field after saving
     const populatedTID = await TID.findById(newTID._id).populate("centreId");
 
     res.status(201).json({
@@ -32,8 +38,6 @@ exports.addTIDEntry = async (req, res) => {
   }
 };
 
-
-
 // Get all TID entries
 exports.getAllTIDs = async (req, res) => {
   try {
@@ -44,7 +48,7 @@ exports.getAllTIDs = async (req, res) => {
   }
 };
 
-// Update TID entry (Add, Remove or Change TID Numbers, or update bank/centre name)
+// Update TID entry
 exports.updateTIDEntry = async (req, res) => {
   try {
     const { id } = req.params;
@@ -53,7 +57,21 @@ exports.updateTIDEntry = async (req, res) => {
     const tidEntry = await TID.findById(id);
     if (!tidEntry) return res.status(404).json({ message: "TID entry not found" });
 
-    if (tidNumbers) tidEntry.tidNumbers = tidNumbers;
+    if (tidNumbers) {
+      // Validate tidNumbers array of objects
+      if (!Array.isArray(tidNumbers)) {
+        return res.status(400).json({ message: "'tidNumbers' must be an array of { tid, accountName } objects" });
+      }
+
+      for (const item of tidNumbers) {
+        if (!item.tid || !item.accountName) {
+          return res.status(400).json({ message: "Each TID must have both 'tid' and 'accountName'" });
+        }
+      }
+
+      tidEntry.tidNumbers = tidNumbers;
+    }
+
     if (bankName) tidEntry.bankName = bankName;
     if (centreName) tidEntry.centreName = centreName;
 
@@ -78,12 +96,13 @@ exports.deleteTIDEntry = async (req, res) => {
   }
 };
 
+// Get TIDs by Centre
 exports.getTIDsByCentre = async (req, res) => {
   try {
     const { centreId } = req.params;
-    const tids = await TID.find({ centreId });
+    const tids = await TID.find({ centreId }).populate("centreId");
     res.status(200).json(tids);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch TIDs", error });
   }
-}
+};
