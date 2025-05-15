@@ -1166,7 +1166,7 @@ const getCentreReportByDate = async (req, res) => {
       .lean();
 
     // Fetch expenses for the given date and centre
-    const expenseMatchCondition = { centreIds: centreObjectId, createdAt: { $gte: dateStart, $lte: dateEnd } };
+    const expenseMatchCondition = { centreIds: centreObjectId, expenseDate: { $gte: dateStart, $lte: dateEnd } };
     const expenses = await Expense.find(expenseMatchCondition).lean();
     const totalExpense = expenses.reduce((total, expense) => total + (expense.amount || 0), 0);
 
