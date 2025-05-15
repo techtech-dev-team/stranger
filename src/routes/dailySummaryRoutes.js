@@ -3,21 +3,20 @@ const express = require("express");
 const router = express.Router();
 const DailySummary = require("../models/DailySummary");
 
-router.get("/daily-summary/:centreId/:date", async (req, res) => {
+router.get("/daily-summary/:date", async (req, res) => {
     try {
-        const { centreId, date } = req.params;
+        const { date } = req.params;
 
-        const summary = await DailySummary.findOne({
-            centreId: new mongoose.Types.ObjectId(centreId),
+        const summaries = await DailySummary.find({
             istDateString: date,
         }).populate('centreId');
 
-        if (!summary) {
+        if (!summaries || summaries.length === 0) {
             return res
                 .status(404)
-                .json({ message: "No summary found for this centre and date." });
+                .json({ message: "No summaries found for this date." });
         }
-        res.json(summary);
+        res.json(summaries);
     } catch (err) {
         res.status(500).json({ message: "Server error", error: err.message });
     }
