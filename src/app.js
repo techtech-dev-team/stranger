@@ -33,7 +33,7 @@ const { refreshData } = require("./controllers/refreshController");
 const { checkMissedEntries } = require('./controllers/notificationController');
 const helmet = require("helmet");
 const masterController = require("./routes/masterRoute");
-
+const dailySummaryRoutes = require("./routes/dailySummaryRoutes");
 
 setInterval(checkMissedEntries, 60 * 1000);
 console.log('Missed entry checker started...');
@@ -81,6 +81,7 @@ app.use(
   );
   
 app.get('/notifications', registerSSEClient);
+app.use('/api', dailySummaryRoutes);
 app.use("/api/master", masterController); 
 app.use("/api/sse", sseRoutes);
 app.use("/api/users", userRoutes);

@@ -444,7 +444,7 @@ exports.getCentreReport = async (req, res) => {
       const dateEnd = new Date(selectedDate);
       dateEnd.setHours(23, 59, 59, 999);
 
-      expenseMatchCondition.createdAt = { $gte: dateStart, $lte: dateEnd };
+       expenseMatchCondition.expenseDate = { $gte: dateStart, $lte: dateEnd };
     }
 
     const expenses = await Expense.find(expenseMatchCondition).lean();
