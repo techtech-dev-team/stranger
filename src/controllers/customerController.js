@@ -1158,7 +1158,6 @@ const getCentreReportByDate = async (req, res) => {
         }
       }
     ]);
-
     // Fetch customers for the given date and centre
     const customers = await Customer.find(matchCondition)
       .populate("service", "name price")
