@@ -20,6 +20,7 @@ router.get("/daily-summary/:date", async (req, res) => {
     } catch (err) {
         res.status(500).json({ message: "Server error", error: err.message });
     }
+    
 });
 
 module.exports = router;

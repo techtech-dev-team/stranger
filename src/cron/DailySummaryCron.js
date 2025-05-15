@@ -84,6 +84,7 @@ cron.schedule("0 7 * * *", async () => {
         { upsert: true, new: true }
       );
     }
+    
   } catch (err) {
     console.error("Error in daily summary cron job:", err);
   }

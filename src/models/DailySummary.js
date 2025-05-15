@@ -41,6 +41,7 @@ const dailySummarySchema = new mongoose.Schema({
   type: String, // e.g., "2025-05-13"
   required: true
 }
+
 });
 
 module.exports = mongoose.model("DailySummary", dailySummarySchema);
