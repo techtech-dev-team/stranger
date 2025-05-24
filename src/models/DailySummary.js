@@ -40,7 +40,12 @@ const dailySummarySchema = new mongoose.Schema({
   istDateString: {
   type: String, // e.g., "2025-05-13"
   required: true
-}
+},
+customerCount: {
+    type: Number,
+    required: true,
+    default: 0
+  }
 
 });
 

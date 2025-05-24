@@ -1,3 +1,4 @@
+
 const cron = require("node-cron");
 const moment = require("moment-timezone");
 const DailySummary = require("../models/DailySummary");
@@ -16,7 +17,7 @@ cron.schedule("0 7 * * *", async () => {
     const rangeStart = nowIST.clone().subtract(1, "day").startOf("day").add(7, "hours").toDate();
     const rangeEnd = nowIST.clone().startOf("day").add(6, "hours").add(59, "minutes").add(59, "seconds").add(999, "milliseconds").toDate();
 
-    // Aggregate customer data per centre
+    // Aggregate customer data per centre, including customerCount
     const customerAgg = await Customer.aggregate([
       {
         $match: {
@@ -29,7 +30,8 @@ cron.schedule("0 7 * * *", async () => {
           totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
           totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
           totalCashCommission: { $sum: "$cashCommission" },
-          totalOnlineCommission: { $sum: "$onlineCommission" }
+          totalOnlineCommission: { $sum: "$onlineCommission" },
+          customerCount: { $sum: 1 }
         }
       }
     ]);
@@ -78,7 +80,8 @@ cron.schedule("0 7 * * *", async () => {
             totalOnline: c.totalOnline || 0,
             totalCashCommission: c.totalCashCommission || 0,
             totalOnlineCommission: c.totalOnlineCommission || 0,
-            totalExpense
+            totalExpense,
+            customerCount: c.customerCount || 0
           }
         },
         { upsert: true, new: true }
