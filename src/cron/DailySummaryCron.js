@@ -24,16 +24,30 @@ cron.schedule("0 7 * * *", async () => {
           inTime: { $gte: rangeStart, $lte: rangeEnd }
         }
       },
-      {
-        $group: {
-          _id: "$centreId",
-          totalCash: { $sum: { $add: ["$paymentCash1", "$paymentCash2"] } },
-          totalOnline: { $sum: { $add: ["$paymentOnline1", "$paymentOnline2"] } },
-          totalCashCommission: { $sum: "$cashCommission" },
-          totalOnlineCommission: { $sum: "$onlineCommission" },
-          customerCount: { $sum: 1 }
-        }
+     {
+  $group: {
+    _id: "$centreId",
+    totalCash: {
+      $sum: {
+        $add: [
+          { $ifNull: ["$paymentCash1", 0] },
+          { $ifNull: ["$paymentCash2", 0] }
+        ]
       }
+    },
+    totalOnline: {
+      $sum: {
+        $add: [
+          { $ifNull: ["$paymentOnline1", 0] },
+          { $ifNull: ["$paymentOnline2", 0] }
+        ]
+      }
+    },
+    totalCashCommission: { $sum: { $ifNull: ["$cashCommission", 0] } },
+    totalOnlineCommission: { $sum: { $ifNull: ["$onlineCommission", 0] } },
+    customerCount: { $sum: 1 }
+  }
+}
     ]);
 
     // Aggregate expenses per centre in the same window
