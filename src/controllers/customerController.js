@@ -979,15 +979,21 @@ const updateCustomer = async (req, res) => {
 //     res.status(500).json({ message: "Server Error" });
 //   }
 // };
-const getDashboardBlocks = async (_, res) => {
+const getDashboardBlocks = async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { date } = req.query;
 
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+    if (!date) {
+      return res.status(400).json({ message: 'Date is required in YYYY-MM-DD format' });
+    }
 
-    const dateRangeQuery = { createdAt: { $gte: today, $lt: tomorrow } };
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const dateRangeQuery = { createdAt: { $gte: startOfDay, $lt: endOfDay } };
 
     // Run all DB calls in parallel
     const [
@@ -1040,7 +1046,7 @@ const getDashboardBlocks = async (_, res) => {
     const totalCollection = totalOnline + totalCash;
 
     // Format today's date as string
-    const todayDateString = today.toISOString().split('T')[0];
+    const todayDateString = startOfDay.toISOString().split('T')[0];
 
     // Count staff present today
     const presentStaffCount = staffList.filter(staff => {
