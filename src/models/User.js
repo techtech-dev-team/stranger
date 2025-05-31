@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema(
       unique: true,
       default: null,
     }
-,    
+,    cashInHand: { type: Number, default: 0 }, 
 
     // Month-wise Attendance
     monthlyAttendance: {

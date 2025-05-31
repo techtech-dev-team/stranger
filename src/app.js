@@ -34,6 +34,7 @@ const { checkMissedEntries } = require('./controllers/notificationController');
 const helmet = require("helmet");
 const masterController = require("./routes/masterRoute");
 const dailySummaryRoutes = require("./routes/dailySummaryRoutes");
+const cashRecieveRoutes = require("./routes/cashRecieveRoutes");
 
 setInterval(checkMissedEntries, 60 * 1000);
 console.log('Missed entry checker started...');
@@ -93,7 +94,9 @@ app.use("/api/visionid", visionIdRoutes);
 app.use("/api/tids", tidRoutes);
 app.use("/api", transactionRoutes);
 app.use('/api/notifications', notificationRoutes);
-// Routes (Protected)
+app.use("/api/cashRecieve,", cashRecieveRoutes); // ✅ Added cashRecieve routes
+
+// Routes (Protected routes)
 app.use(protect);
 // Refresh data before any API route is hit
 app.use("/api/admin", adminRoutes);

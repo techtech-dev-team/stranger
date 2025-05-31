@@ -55,6 +55,13 @@ exports.addCashCollection = async (req, res) => {
       balance: newBalance,
     });
 
+    // Update user's cashInHand
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    user.cashInHand = (user.cashInHand || 0) + amountReceived;
+    await user.save();
+
     // Create cash collection entry
     const newEntry = new CashCollection({
       centreId,
@@ -78,6 +85,7 @@ exports.addCashCollection = async (req, res) => {
       data: newEntry,
       previousBalance,
       balance: newBalance,
+      userCashInHand: user.cashInHand,
     });
   } catch (error) {
     res.status(500).json({ message: "Error adding cash collection.", error: error.message });
