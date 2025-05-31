@@ -640,50 +640,13 @@ exports.deleteCentreById = async (req, res) => {
 
 exports.getTodayZeroEntryCentresCount = async (req, res) => {
   try {
-    const todayStart = moment().tz("Asia/Kolkata").startOf("day").toDate();
-    const todayEnd = moment().tz("Asia/Kolkata").endOf("day").toDate();
+    const { date } = req.query; // Get the date from query parameters
+    const targetDate = date && moment(date, "YYYY-MM-DD", true).isValid() 
+      ? moment(date).tz("Asia/Kolkata") 
+      : moment().tz("Asia/Kolkata");
 
-
-    // Fetch all centres and populate the regionId
-    const centres = await Centre.find().populate('regionId', 'name');
-    if (!centres.length) {
-      return res.status(404).json({ message: "No centres found" });
-    }
-
-    const rawActiveCentreIds = await Customer.distinct("centreId", {
-      createdAt: { $gte: todayStart, $lt: todayEnd },
-    });
-    const activeCentreIds = rawActiveCentreIds.map(id => id.toString());
-
-
-    //  Split active and inactive centres
-    const activeCentres = centres.filter(centre =>
-      activeCentreIds.includes(centre._id.toString())
-    );
-
-    const inactiveCentres = centres.filter(centre =>
-      !activeCentreIds.includes(centre._id.toString())
-    );
-
-    res.status(200).json({
-      message: "Fetched today's centre activity successfully",
-      date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
-      activeCentreCount: activeCentres.length,
-      inactiveCentreCount: inactiveCentres.length,
-      activeCentres,
-      inactiveCentres
-    });
-
-  } catch (error) {
-    console.error(" Error in getTodayZeroEntryCentresCount:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-exports.getTodayZeroEntryCentresCount = async (req, res) => {
-  try {
-    const todayStart = moment().tz("Asia/Kolkata").startOf("day").toDate();
-    const todayEnd = moment().tz("Asia/Kolkata").endOf("day").toDate();
-
+    const todayStart = targetDate.startOf("day").toDate();
+    const todayEnd = targetDate.endOf("day").toDate();
 
     // Fetch all centres and populate the regionId
     const centres = await Centre.find().populate('regionId', 'name');
@@ -696,8 +659,7 @@ exports.getTodayZeroEntryCentresCount = async (req, res) => {
     });
     const activeCentreIds = rawActiveCentreIds.map(id => id.toString());
 
-
-    //  Split active and inactive centres
+    // Split active and inactive centres
     const activeCentres = centres.filter(centre =>
       activeCentreIds.includes(centre._id.toString())
     );
@@ -707,8 +669,8 @@ exports.getTodayZeroEntryCentresCount = async (req, res) => {
     );
 
     res.status(200).json({
-      message: "Fetched today's centre activity successfully",
-      date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
+      message: "Fetched centre activity successfully",
+      date: targetDate.format("YYYY-MM-DD"),
       activeCentreCount: activeCentres.length,
       inactiveCentreCount: inactiveCentres.length,
       activeCentres,
@@ -716,10 +678,11 @@ exports.getTodayZeroEntryCentresCount = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(" Error in getTodayZeroEntryCentresCount:", error);
+    console.error("Error in getTodayZeroEntryCentresCount:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 exports.updateAllCentreBalances = async (req, res) => {
   try {
     const { centerId } = req.params;
