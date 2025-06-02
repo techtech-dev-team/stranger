@@ -21,6 +21,13 @@ const updateCashInHand = async () => {
 
     // Update each user's cashInHand ONCE
     for (const { _id: userId, totalAmountReceived } of aggregatedCollections) {
+      // Reset cashInHand to 0
+      await User.updateOne(
+        { _id: userId },
+        { $set: { cashInHand: 0 } }
+      );
+
+      // Increment cashInHand with the new totalAmountReceived
       const result = await User.updateOne(
         { _id: userId },
         { $inc: { cashInHand: totalAmountReceived } }
@@ -40,7 +47,7 @@ const updateCashInHand = async () => {
 };
 
 cron.schedule(
-    "25 20 * * *", // Schedule for 8:25 PM IST
+    "53 10 * * *", // Schedule for 10:53 AM IST
     async () => {
     console.log("Scheduled cron job triggered at 9 PM IST.");
     await updateCashInHand();

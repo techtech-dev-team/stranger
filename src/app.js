@@ -94,7 +94,7 @@ app.use("/api/visionid", visionIdRoutes);
 app.use("/api/tids", tidRoutes);
 app.use("/api", transactionRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use("/api/cashRecieve,", cashRecieveRoutes); // ✅ Added cashRecieve routes
+app.use("/api/cashRecieve", cashRecieveRoutes); // ✅ Added cashRecieve routes
 
 // Routes (Protected routes)
 app.use(protect);
