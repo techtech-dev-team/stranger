@@ -59,7 +59,7 @@ exports.addCashCollection = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found." });
 
-    user.cashInHand = (user.cashInHand || 0) + amountReceived;
+    user.cashInHand = (Number(user.cashInHand) || 0) + Number(amountReceived);
     await user.save();
 
     // Create cash collection entry
