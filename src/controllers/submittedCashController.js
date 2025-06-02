@@ -3,6 +3,9 @@ const User = require("../models/User");
 
 const submitCash = async (req, res) => {
   try {
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: "User not authenticated." });
+    }
     const { amountPaid, dateSubmitted, submittedTo, remark } = req.body;
     const submittedBy = req.user._id; // Assuming `req.user` contains the logged-in user's ID
 
