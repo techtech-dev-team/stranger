@@ -227,7 +227,7 @@ exports.getRegionStatistics = async (req, res) => {
         const totalCommission = (customer.cashCommission || 0) + (customer.onlineCommission || 0);
 
         // Assuming payCriteria logic is elsewhere, subtracting commission as before
-        region.totalSales += (totalCash + totalOnline - totalCommission);
+        region.totalSales += (totalCash + totalOnline);
       }
     });
 
