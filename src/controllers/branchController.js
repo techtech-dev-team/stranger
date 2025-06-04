@@ -64,13 +64,22 @@ exports.getCombinedMonthlySales = async (req, res) => {
     let startDate, endDate, data;
 
     if (week && month && year) {
-      // Daily data for that week
+      // Daily data for the selected week
       const paddedMonth = String(month).padStart(2, '0');
-      const startOfMonth = moment(`${validYear}-${paddedMonth}-01`);
+      const startOfMonth = moment(`${validYear}-${paddedMonth}-01`).startOf('month');
       startDate = moment(startOfMonth).add((week - 1) * 7, 'days').startOf('day');
-      endDate = moment(startDate).add(6, 'days').endOf('day');
 
-      data = Array.from({ length: 7 }, (_, i) => ({
+      // Cap endDate to the end of the month if week exceeds month-end
+      endDate = moment(startDate).add(6, 'days').endOf('day');
+      const monthEnd = moment(startOfMonth).endOf('month');
+      if (endDate.isAfter(monthEnd)) {
+        endDate = monthEnd;
+      }
+
+      // Calculate actual number of days in the selected week
+      const daysInWeek = endDate.diff(startDate, 'days') + 1;
+
+      data = Array.from({ length: daysInWeek }, (_, i) => ({
         day: i + 1,
         totalSales: 0,
         customerCount: 0
@@ -82,16 +91,17 @@ exports.getCombinedMonthlySales = async (req, res) => {
       });
 
       customers.forEach((customer) => {
-        const dayIndex = moment(customer.createdAt).day(); // 0 = Sunday, 6 = Saturday
-        const dayAdjustedIndex = (dayIndex + 6) % 7; // Monday as 0
-        const totalCash = (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
-        const totalOnline = (customer.paymentOnline1 || 0) + (customer.paymentOnline2 || 0);
-        data[dayAdjustedIndex].totalSales += totalCash + totalOnline;
-        data[dayAdjustedIndex].customerCount += 1;
+        const dayIndex = moment(customer.createdAt).diff(startDate, 'days');
+        if (dayIndex >= 0 && dayIndex < daysInWeek) {
+          const totalCash = (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
+          const totalOnline = (customer.paymentOnline1 || 0) + (customer.paymentOnline2 || 0);
+          data[dayIndex].totalSales += totalCash + totalOnline;
+          data[dayIndex].customerCount += 1;
+        }
       });
 
     } else if (month && year) {
-      // Weekly data for that month
+      // Weekly data for the selected month
       const paddedMonth = String(month).padStart(2, '0');
       startDate = moment(`${validYear}-${paddedMonth}-01`).startOf('month');
       endDate = moment(startDate).endOf('month');
@@ -109,8 +119,9 @@ exports.getCombinedMonthlySales = async (req, res) => {
 
       customers.forEach((customer) => {
         const createdAt = moment(customer.createdAt);
-        const weekOfMonth = Math.ceil(createdAt.date() / 7);
-        const weekIndex = Math.min(weekOfMonth - 1, 3);
+        const dayOfMonth = createdAt.date();
+        const weekOfMonth = Math.ceil(dayOfMonth / 7);
+        const weekIndex = Math.min(weekOfMonth - 1, 3); // Cap to 4 weeks
         const totalCash = (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
         const totalOnline = (customer.paymentOnline1 || 0) + (customer.paymentOnline2 || 0);
         data[weekIndex].totalSales += totalCash + totalOnline;
@@ -118,7 +129,7 @@ exports.getCombinedMonthlySales = async (req, res) => {
       });
 
     } else if (year) {
-      // Monthly data for that year
+      // Monthly data for the selected year
       startDate = moment(`${validYear}-01-01`).startOf('year');
       endDate = moment(startDate).endOf('year');
 
@@ -151,6 +162,7 @@ exports.getCombinedMonthlySales = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 exports.getCombinedMonthlyClients = async (req, res) => {
   try {
