@@ -23,38 +23,137 @@ const getCustomersForYear = async (year, regionId) => {
   return Customer.find(query);
 }
 
-// API for Total Sales Monthly (3 months)
+
 exports.getMonthlySales = async (req, res) => {
   try {
-    const { regionId, year } = req.query;
+    const { regionId, year, month, week } = req.query;
 
-    // Validate year, default to current year
-    const validYear = parseInt(year) || moment().year();
-    if (isNaN(validYear)) {
-      return res.status(400).json({ message: "Invalid year" });
+    if (!regionId) return res.status(400).json({ error: "regionId is required" });
+
+    const selectedYear = parseInt(year) || moment().year();
+    const selectedMonth = month ? parseInt(month) : null;
+    const selectedWeek = week ? parseInt(week) : null;
+
+    // Start & end dates based on query
+    let startDate, endDate;
+
+    if (selectedYear && selectedMonth && selectedWeek) {
+      // Specific week in a month
+      startDate = moment(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`).startOf('month')
+                   .add((selectedWeek - 1) * 7, 'days');
+      endDate = moment(startDate).add(6, 'days').endOf('day');
+    } else if (selectedYear && selectedMonth) {
+      // Whole month
+      startDate = moment(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`).startOf('month');
+      endDate = moment(startDate).endOf('month');
+    } else {
+      // Whole year
+      startDate = moment(`${selectedYear}-01-01`).startOf('year');
+      endDate = moment(startDate).endOf('year');
     }
 
-    // Fetch customers for the year
-    const customers = await getCustomersForYear(validYear, regionId);
+    // Fetch customers within date range & region
+    const customers = await Customer.find({
+      regionId,
+      createdAt: { $gte: startDate.toDate(), $lte: endDate.toDate() }
+    }).lean();
 
-    // Initialize sales data
-    const monthlySales = initializeMonthlyData();
+    let responseData = [];
 
-    // Calculate sales per month
-    customers.forEach(customer => {
-      const monthIndex = moment(customer.createdAt).month();
-      const totalCash = (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
-      const totalOnline = (customer.paymentOnline1 || 0) + (customer.paymentOnline2 || 0);
-      const totalCommission = (customer.cashCommission || 0) + (customer.onlineCommission || 0);
-      monthlySales[monthIndex].value += (totalCash + totalOnline - totalCommission);
-    });
+    if (selectedYear && !selectedMonth) {
+      // Yearly: aggregate per month
+      const monthlyData = Array.from({ length: 12 }, (_, i) => ({
+        month: i + 1,
+        totalSales: 0,
+        totalCustomers: 0
+      }));
 
-    res.status(200).json(monthlySales);
+      customers.forEach(c => {
+        const monthIndex = moment(c.createdAt).month(); // 0-based
+        const totalCash = (c.paymentCash1 || 0) + (c.paymentCash2 || 0);
+        const totalOnline = (c.paymentOnline1 || 0) + (c.paymentOnline2 || 0);
+
+        monthlyData[monthIndex].totalSales += (totalCash + totalOnline);
+        monthlyData[monthIndex].totalCustomers += 1;
+      });
+
+      responseData = monthlyData;
+
+    } else if (selectedYear && selectedMonth && !selectedWeek) {
+      // Monthly: aggregate per week
+
+      const daysInMonth = moment(endDate).date();
+      const weeksInMonth = Math.ceil(daysInMonth / 7);
+
+      const weeklyData = Array.from({ length: weeksInMonth }, (_, i) => ({
+        week: i + 1,
+        totalSales: 0,
+        totalCustomers: 0
+      }));
+
+      customers.forEach(c => {
+        const dayOfMonth = moment(c.createdAt).date();
+        let weekIndex = Math.floor((dayOfMonth - 1) / 7);
+        if (weekIndex >= weeksInMonth) weekIndex = weeksInMonth - 1; // clamp index
+
+        const totalCash = (c.paymentCash1 || 0) + (c.paymentCash2 || 0);
+        const totalOnline = (c.paymentOnline1 || 0) + (c.paymentOnline2 || 0);
+
+        weeklyData[weekIndex].totalSales += (totalCash + totalOnline);
+        weeklyData[weekIndex].totalCustomers += 1;
+      });
+
+      responseData = weeklyData;
+
+    } else if (selectedYear && selectedMonth && selectedWeek) {
+      // Weekly: aggregate per day (7 days)
+
+      const dailyData = Array.from({ length: 7 }, (_, i) => ({
+        day: i + 1,
+        totalSales: 0,
+        totalCustomers: 0
+      }));
+
+      customers.forEach(c => {
+        const dayOfMonth = moment(c.createdAt).date();
+        const startDay = (selectedWeek - 1) * 7 + 1;
+        const dayIndex = dayOfMonth - startDay; // 0-based day in selected week
+
+        if (dayIndex >= 0 && dayIndex < 7) {
+          const totalCash = (c.paymentCash1 || 0) + (c.paymentCash2 || 0);
+          const totalOnline = (c.paymentOnline1 || 0) + (c.paymentOnline2 || 0);
+
+          dailyData[dayIndex].totalSales += (totalCash + totalOnline);
+          dailyData[dayIndex].totalCustomers += 1;
+        }
+      });
+
+      responseData = dailyData;
+
+    } else {
+      // Fallback empty data
+      responseData = [];
+    }
+
+    res.json(responseData);
+
   } catch (error) {
-    console.error("Error fetching monthly sales:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error in getMonthlySales:", error);
+    res.status(500).json({ error: "Server error" });
   }
 };
+
+
+// Helper function to fetch customers within the month and region
+async function getCustomersForMonth(startDate, endDate, regionId) {
+  // Replace with your DB query logic
+  return await Customer.find({
+    createdAt: { $gte: startDate, $lte: endDate },
+    regionId
+  }).lean();
+}
+
+
 
 // API to get monthly clients
 exports.getMonthlyClients = async (req, res) => {
