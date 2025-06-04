@@ -911,74 +911,6 @@ const updateCustomer = async (req, res) => {
   }
 };
 
-// const getDashboardBlocks = async (req, res) => {
-//   try {
-//     const today = new Date();
-//     today.setHours(0, 0, 0, 0);
-
-//     const tomorrow = new Date(today);
-//     tomorrow.setDate(today.getDate() + 1);
-
-//     const dateRangeQuery = { createdAt: { $gte: today, $lt: tomorrow } };
-
-//     // Run all DB calls in parallel
-//     const [
-//       todaysCustomers,
-//       allCustomers,
-//       staffList,
-//       activeCentersCount,
-//       inactiveCentersCount
-//     ] = await Promise.all([
-//       Customer.countDocuments(dateRangeQuery),
-//       Customer.find(dateRangeQuery).select(
-//         'paymentOnline1 paymentOnline2 paymentCash1 paymentCash2 cashCommission onlineCommission'
-//       ),
-//       User.find({ role: "ClubStaff" }).select('monthlyAttendance'),
-//       Centre.countDocuments({ status: "active" }),
-//       Centre.countDocuments({ status: "inactive" })
-//     ]);
-
-//     // Calculate totals
-//     let totalOnline = 0;
-//     let totalCash = 0;
-//     let totalCommission = 0;
-
-//     allCustomers.forEach(customer => {
-//       totalOnline += (customer.paymentOnline1 || 0) + (customer.paymentOnline2 || 0);
-//       totalCash += (customer.paymentCash1 || 0) + (customer.paymentCash2 || 0);
-//       totalCommission += (customer.cashCommission || 0) + (customer.onlineCommission || 0);
-//     });
-
-//     const totalCollection = totalOnline + totalCash;
-
-//     // Format today's date as string
-//     const todayDateString = today.toISOString().split('T')[0];
-
-//     // Count staff present today
-//     const presentStaffCount = staffList.filter(staff => {
-//       const attendance = staff.monthlyAttendance || {};
-//       return attendance[todayDateString];
-//     }).length;
-
-//     // Prepare dashboard blocks
-//     const blocksData = [
-//       { id: 1, title: "Today's Customers", value: todaysCustomers, section: "customers" },
-//       { id: 2, title: "Staff Present Today", value: presentStaffCount, section: "staff-attendance" },
-//       { id: 3, title: "Online Collection", value: `${totalOnline} Rs`, section: "online-collection" },
-//       { id: 4, title: "Cash Collection", value: `${totalCash} Rs`, section: "cash-collection" },
-//       { id: 5, title: "Total Collection", value: `${totalCollection} Rs`, section: "total-collection" },
-//       { id: 6, title: "Commission", value: `${totalCommission} Rs`, section: "commission" },
-//       { id: 7, title: "All Centers", value: activeCentersCount, section: "center-active" },
-//       { id: 8, title: "Inactive Centers", value: inactiveCentersCount, section: "center-inactive" }
-//     ];
-
-//     res.status(200).json(blocksData);
-
-//   } catch (error) {
-//     console.error("Error in getDashboardBlocks:", error);
-//     res.status(500).json({ message: "Server Error" });
-//   }
-// };
 const getDashboardBlocks = async (req, res) => {
   try {
     const { date } = req.query;
@@ -1298,7 +1230,142 @@ const getMonthlyCollectionAndExpenses = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+const getRevenueData = async (req, res) => {
+  try {
+    const { centreId, year } = req.query;
+
+    // Validate inputs
+    if (!year) {
+      return res.status(400).json({ message: "Year is required" });
+    }
+
+    const yearNumber = parseInt(year, 10);
+    if (isNaN(yearNumber)) {
+      return res.status(400).json({ message: "Invalid year format" });
+    }
+
+    const centreFilter = centreId && mongoose.isValidObjectId(centreId)
+      ? { centreId: new mongoose.Types.ObjectId(centreId) }
+      : {};
+
+    // Construct date range for the entire year
+    const startOfYear = new Date(yearNumber, 0, 1); // January 1st of the given year
+    const endOfYear = new Date(yearNumber, 11, 31, 23, 59, 59, 999); // December 31st of the given year
+
+    // *** MONTHLY REVENUE ***
+    let monthlyRevenue = await Customer.aggregate([
+      {
+        $match: {
+          ...centreFilter,
+          createdAt: { $gte: startOfYear, $lte: endOfYear },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+          totalRevenue: {
+            $sum: {
+              $add: [
+                { $ifNull: ["$paymentCash1", 0] },
+                { $ifNull: ["$paymentCash2", 0] },
+                { $ifNull: ["$paymentOnline1", 0] },
+                { $ifNull: ["$paymentOnline2", 0] }
+              ],
+            },
+          },
+          totalCash: {
+            $sum: {
+              $add: [
+                { $ifNull: ["$paymentCash1", 0] },
+                { $ifNull: ["$paymentCash2", 0] }
+              ],
+            },
+          },
+          totalOnline: {
+            $sum: {
+              $add: [
+                { $ifNull: ["$paymentOnline1", 0] },
+                { $ifNull: ["$paymentOnline2", 0] }
+              ],
+            },
+          },
+          customerCount: { $sum: 1 } // Add customer count
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Create an array of all 12 months in "YYYY-MM" format
+    const allMonths = Array.from({ length: 12 }, (_, i) => {
+      const month = String(i + 1).padStart(2, '0');
+      return `${year}-${month}`;
+    });
+
+    // Ensure all months are present in the monthlyRevenue data
+    monthlyRevenue = allMonths.map(month => {
+      const existingMonthData = monthlyRevenue.find(item => item._id === month);
+      return existingMonthData || {
+        _id: month,
+        totalRevenue: 0,
+        totalCash: 0,
+        totalOnline: 0,
+        customerCount: 0
+      };
+    });
+
+    // *** ANNUAL REVENUE ***
+    const annualRevenue = await Customer.aggregate([
+      {
+        $match: {
+          ...centreFilter,
+          createdAt: { $gte: startOfYear, $lte: endOfYear },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y", date: "$createdAt" } },
+          totalRevenue: {
+            $sum: {
+              $add: [
+                { $ifNull: ["$paymentCash1", 0] },
+                { $ifNull: ["$paymentCash2", 0] },
+                { $ifNull: ["$paymentOnline1", 0] },
+                { $ifNull: ["$paymentOnline2", 0] }
+              ],
+            },
+          },
+          totalCash: {
+            $sum: {
+              $add: [
+                { $ifNull: ["$paymentCash1", 0] },
+                { $ifNull: ["$paymentCash2", 0] }
+              ],
+            },
+          },
+          totalOnline: {
+            $sum: {
+              $add: [
+                { $ifNull: ["$paymentOnline1", 0] },
+                { $ifNull: ["$paymentOnline2", 0] }
+              ],
+            },
+          },
+          customerCount: { $sum: 1 } // Add customer count
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      message: "Revenue data retrieved successfully",
+      monthlyRevenue,
+      annualRevenue: annualRevenue[0] || { _id: year, totalRevenue: 0, totalCash: 0, totalOnline: 0, customerCount: 0 }, // Ensure there's always a value
+    });
+  } catch (error) {
+    console.error("Error fetching revenue data:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 
 
 
-module.exports = { getDashboardBlocks, getCentreReportByDate, getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate, addCustomer, getCustomersFast, updateCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre, getFilteredCustomers, verifyEditCustomer, deleteCustomer };
+module.exports = { getDashboardBlocks,getRevenueData, getCentreReportByDate, getMonthlyCollectionAndExpenses, getCustomersByCentreAndDate, addCustomer, getCustomersFast, updateCustomer, getCustomers, getCentreSalesReport, getCustomerById, editCustomer, sseHandler, getCentreSalesReportDaily, getSalesGraphData, getCustomersByCentre, getFilteredCustomers, verifyEditCustomer, deleteCustomer };
