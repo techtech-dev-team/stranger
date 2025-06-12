@@ -3,9 +3,11 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const Expense = require("../models/Expense");
+const Otp = require("../models/Otp");
+const axios = require('axios');
 // Function to generate a random 4-digit number
 const generateRandom4Digit = () => Math.floor(1000 + Math.random() * 9000);
-
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 // Function to generate loginId
 const generateLoginId = (role) => {
   const rolePrefix = role.slice(0, 2).toUpperCase();
@@ -16,6 +18,115 @@ const getCurrentMonth = () => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 };
+
+exports.requestOtp = async (req, res) => {
+  try {
+    let { mobileNumber } = req.body;
+
+    if (!mobileNumber) {
+      return res.status(400).json({ message: "Mobile number is required" });
+    }
+
+    // Clean the mobile number
+    mobileNumber = mobileNumber.toString().trim().replace(/^(\+91|91)/, '');
+
+   
+    // Check if user exists
+    const user = await User.findOne({
+      $expr: { $eq: [{ $toString: "$mobileNumber" }, mobileNumber] }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: `User not found with number ${mobileNumber}` });
+    }
+
+    // Generate OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
+
+    // Save OTP to DB
+    await Otp.create({ mobileNumber, otp, expiresAt });
+
+    // Send OTP via SMS API
+    const smsApiUrl = `http://hilitemultimedia.co.in/websms/api/http/index.php?username=TICTAC&apikey=4C55A-5E4F0&apirequest=Text&route=ServiceImplicit&TemplateID=1707174659962753809&sender=TICGAM&mobile=${mobileNumber}&message=Dear User, ${otp} This Is Your Code For User Login Of Tictac. Thank You Tictac Games`;
+
+    const smsResponse = await axios.get(smsApiUrl);
+    
+
+    return res.status(200).json({ message: "OTP sent successfully" });
+  } catch (err) {
+    console.error("❌ OTP Request Error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+exports.verifyOtpLogin = async (req, res) => {
+  try {
+    let { mobileNumber, otp } = req.body;
+
+    if (!mobileNumber || !otp) {
+      return res.status(400).json({ message: "Mobile number and OTP are required" });
+    }
+
+    // Clean and convert
+    mobileNumber = mobileNumber.toString().trim().replace(/^(\+91|91)/, '');
+    otp = otp.toString().trim();
+
+    // ✅ Fetch OTP Record
+    const otpRecord = await Otp.findOne({ mobileNumber, otp });
+
+    if (!otpRecord) {
+      return res.status(401).json({ message: "Invalid OTP" });
+    }
+
+    if (otpRecord.expiresAt < new Date()) {
+      await Otp.deleteMany({ mobileNumber });
+      return res.status(401).json({ message: "OTP has expired" });
+    }
+
+    // ✅ Use $expr + $toString to avoid type issues in User lookup
+    const user = await User.findOne({
+      $expr: { $eq: [{ $toString: "$mobileNumber" }, mobileNumber] }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // ✅ Cleanup OTP
+    await Otp.deleteMany({ mobileNumber });
+
+    const userPayload = {
+      _id: user._id,
+      loginId: user.loginId,
+      role: user.role,
+      name: user.name
+    };
+
+    const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict"
+    });
+
+    return res.status(200).json({
+      message: "Login successful",
+      token,
+      user: userPayload,
+      role: user.role
+    });
+
+  } catch (error) {
+    console.error("❌ OTP Verify Error:", error);
+    return res.status(500).json({ message: "Error verifying OTP", error: error.message });
+  }
+};
+
+
+
+
+
 
 exports.registerUser = async (req, res) => {
   try {
