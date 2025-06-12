@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getAllUsers, getUserById,getAllUsersExceptStaff,loginArea, getClubStaffUsers,requestOtp, verifyOtpLogin,getClubStaffByCentreId ,login2,getPresentStaffByDate, registerUser, updateUser, deleteUser ,getIDUsers, getVisionUsers,login  , getAttendanceReport, getMonthlyAttendanceReport , deactivateUser , markPresent , getPresentStaffToday } = require("../controllers/userController");
+const { getAllUsers, getUserById,getAllUsersExceptStaff,loginArea, getClubStaffUsers,requestOtp, verifyOtpLogin,getClubStaffByCentreId ,login2,getPresentStaffByDate, registerUser, updateUser, deleteUser ,getIDUsers, getVisionUsers,login  , getAttendanceReport, getMonthlyAttendanceReport , deactivateUser , markPresent , getPresentStaffToday ,updateUserPartial} = require("../controllers/userController");
 
 // Routes
 router.post("/login/request-otp", requestOtp);
@@ -24,4 +24,5 @@ router.get("/:id/attendance/:month", getMonthlyAttendanceReport);
 router.put("/:id/deactivate", deactivateUser);
 router.put("/:id/mark-present", markPresent);
 router.get("/present/today", getPresentStaffToday);
+router.patch("/update/:id",updateUserPartial);
 module.exports = router;

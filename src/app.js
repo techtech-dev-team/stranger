@@ -50,7 +50,7 @@ connectDB();
 app.use(cors({
   origin: true, // Reflects the request origin in Access-Control-Allow-Origin
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "PATCH","DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 

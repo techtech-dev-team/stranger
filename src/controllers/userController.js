@@ -820,3 +820,27 @@ exports.getIDUsers = async (req, res) => {
     res.status(500).json({ message: "Error retrieving ID users", error: error.message });
   }
 };
+exports.updateUserPartial = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid user ID format" });
+    }
+
+    let user = await User.findById(id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Update only the fields that are present in the request body
+    Object.keys(updateData).forEach(key => {
+      user[key] = updateData[key];
+    });
+
+    await user.save();
+
+    res.json({ message: "User updated successfully", user });
+  } catch (error) {
+    res.status(500).json({ error: "Error updating user", details: error.message });
+  }
+};
