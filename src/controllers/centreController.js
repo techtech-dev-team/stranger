@@ -471,7 +471,7 @@ exports.getCentreReport = async (req, res) => {
     }
 
     let totalOnlineValue = salesReport.length > 0 ? salesReport[0].totalOnline : 0;
-    if (center.payCriteria === "plus") {
+    if (center.payCriteria === "plus" || center.payCriteria === "minus") {
       totalOnlineValue += (salesReport.length > 0 ? salesReport[0].totalOnlineCommission : 0);
     }
 
