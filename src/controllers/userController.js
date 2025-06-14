@@ -844,3 +844,17 @@ exports.updateUserPartial = async (req, res) => {
     res.status(500).json({ error: "Error updating user", details: error.message });
   }
 };
+
+exports.getARMUsers = async (req, res) => {
+  try {
+    const armUsers = await User.find({ role: "ARM" })
+      .populate("branchIds")
+      .populate("centreIds")
+      .populate("regionIds", "name");
+
+    res.status(200).json(armUsers);
+  } catch (error) {
+    console.error("Error retrieving ARM users:", error);
+    res.status(500).json({ message: "Error retrieving ARM users", error: error.message });
+  }
+};

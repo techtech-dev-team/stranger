@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getAllUsers, getUserById,getAllUsersExceptStaff,loginArea, getClubStaffUsers,requestOtp, verifyOtpLogin,getClubStaffByCentreId ,login2,getPresentStaffByDate, registerUser, updateUser, deleteUser ,getIDUsers, getVisionUsers,login  , getAttendanceReport, getMonthlyAttendanceReport , deactivateUser , markPresent , getPresentStaffToday ,updateUserPartial} = require("../controllers/userController");
+const { getAllUsers, getUserById,getARMUsers,getAllUsersExceptStaff,loginArea, getClubStaffUsers,requestOtp, verifyOtpLogin,getClubStaffByCentreId ,login2,getPresentStaffByDate, registerUser, updateUser, deleteUser ,getIDUsers, getVisionUsers,login  , getAttendanceReport, getMonthlyAttendanceReport , deactivateUser , markPresent , getPresentStaffToday ,updateUserPartial} = require("../controllers/userController");
 
 // Routes
 router.post("/login/request-otp", requestOtp);
@@ -10,6 +10,7 @@ router.get("/all", getAllUsersExceptStaff);
 router.get("/club-staff/:centreId",getClubStaffByCentreId);
 router.get('/vision-users',getVisionUsers);
 router.get('/id-users', getIDUsers);
+router.get("/arm", getARMUsers);
 router.get("/present", getPresentStaffByDate);
 router.post("/register", registerUser);
 router.post("/arealogin",loginArea);

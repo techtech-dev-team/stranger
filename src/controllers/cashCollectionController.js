@@ -174,4 +174,28 @@ exports.toggleVerificationStatus = async (req, res) => {
     res.status(500).json({ message: "Error updating verification status.", error: error.message });
   }
 };
+exports.getCashCollectionHistoryByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
 
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: "Invalid user ID format" });
+    }
+
+    const cashCollections = await CashCollection.find({ userId: userId })
+      .populate('/* other fields you want to populate, e.g., centreId */'); // Populate related data if needed
+
+    if (!cashCollections || cashCollections.length === 0) {
+      return res.status(404).json({ message: "No cash collection history found for this user" });
+    }
+
+    // Explicitly pass all fields from each CashCollection document
+    const cashCollectionData = cashCollections.map(collection => collection.toObject());
+
+    res.status(200).json(cashCollectionData);
+
+  } catch (error) {
+    console.error("Error retrieving cash collection history:", error);
+    res.status(500).json({ error: "Error retrieving cash collection history", details: error.message });
+  }
+};

@@ -677,9 +677,9 @@ const editCustomer = async (req, res) => {
 
     if (centre.payCriteria === "plus") {
       balanceUpdate = Number(updates.paymentCash2 || 0) + Number(updates.cashCommission || 0);
-    } else if (centre.payCriteria === "minus") {
-      balanceUpdate = Number(updates.paymentCash2 || 0);
-    }
+        } else if (centre.payCriteria === "minus") {
+      balanceUpdate = Number(updates.paymentCash2 || 0) - Number(updates.onlineCommission || 0);
+        }
 
     centre.balance += balanceUpdate;
     await centre.save();
@@ -730,7 +730,8 @@ const verifyEditCustomer = async (req, res) => {
     if (centre.payCriteria === "plus") {
       balanceUpdate = newPaymentCash2 + cashCommissionAmount;
     } else if (centre.payCriteria === "minus") {
-      balanceUpdate = newPaymentCash2;
+      const onlineCommissionAmount = Number(updates.onlineCommission) || 0;
+      balanceUpdate = newPaymentCash2 - onlineCommissionAmount;
     }
 
     centre.balance += balanceUpdate;
@@ -877,17 +878,19 @@ const updateCustomer = async (req, res) => {
     if (centre.payCriteria === "plus") {
       balanceUpdate -= Number(existingCustomer.paymentCash1 || 0) + Number(existingCustomer.paymentCash2 || 0)
         - Number(existingCustomer.cashCommission || 0) - Number(existingCustomer.onlineCommission || 0);
-    } else if (centre.payCriteria === "minus") {
+        } else if (centre.payCriteria === "minus") {
       balanceUpdate -= Number(existingCustomer.paymentCash1 || 0) + Number(existingCustomer.paymentCash2 || 0)
-    }
+        - Number(existingCustomer.onlineCommission || 0);
+        }
 
     // Apply the updated customer's payment values to the centre balance
     if (centre.payCriteria === "plus") {
       balanceUpdate += Number(updates.paymentCash1 || 0) + Number(updates.paymentCash2 || 0)
-        + Number(updates.cashCommission || 0)
-    } else if (centre.payCriteria === "minus") {
-      balanceUpdate += Number(updates.paymentCash1 || 0) + Number(updates.paymentCash2 || 0);
-    }
+        + Number(updates.cashCommission || 0);
+        } else if (centre.payCriteria === "minus") {
+      balanceUpdate += Number(updates.paymentCash1 || 0) + Number(updates.paymentCash2 || 0)
+        - Number(updates.onlineCommission || 0);
+        }
 
     centre.balance += balanceUpdate;
     await centre.save();
