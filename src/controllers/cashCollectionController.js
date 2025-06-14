@@ -1,7 +1,7 @@
 const CashCollection = require("../models/cashCollection");
 const User = require("../models/User");
 const Centre = require("../models/Centre");
-
+const mongoose = require('mongoose');
 const clients = []; // Store SSE clients
 
 // SSE Handler
@@ -183,16 +183,25 @@ exports.getCashCollectionHistoryByUserId = async (req, res) => {
     }
 
     const cashCollections = await CashCollection.find({ userId: userId })
-      .populate('/* other fields you want to populate, e.g., centreId */'); // Populate related data if needed
+      .populate('centreId'); // Populate related data if needed
 
     if (!cashCollections || cashCollections.length === 0) {
       return res.status(404).json({ message: "No cash collection history found for this user" });
     }
 
+    // Calculate total collected amount from amountReceived, with null check
+    const totalCollectedAmount = cashCollections.reduce((sum, collection) => {
+      const amount = collection.amountReceived || 0; // Use 0 if amountReceived is null or undefined
+      return sum + amount;
+    }, 0);
+
     // Explicitly pass all fields from each CashCollection document
     const cashCollectionData = cashCollections.map(collection => collection.toObject());
 
-    res.status(200).json(cashCollectionData);
+    res.status(200).json({
+      cashCollectionHistory: cashCollectionData,
+      totalCollectedAmount: totalCollectedAmount
+    });
 
   } catch (error) {
     console.error("Error retrieving cash collection history:", error);
